@@ -217,7 +217,7 @@ The service `ClearTrajectories` can be used to clear the trajectory buffer in th
 ### Finger position control
 Cartesian position control can be realized by calling KinovaComm::setFingerPositions() in customized node. Alternatively, you may simply call the node `fingers_action_client.py` in the kinova_demo package. 
 Help information is availabe with the `-h` option. 
-The unit of finger command can be by `{turn | mm | percent}`, which refers to turn of the motor, milimeter and percentage. The finger is essentially controlled by `turn`, and the rest units are propotional to `turn` for convenience. The value 0 indicates fully open, while `finger_maxTurn` represents fully closed. The value of `finger_maxTurn` may vary due to many factors. A proper reference value for a finger turn will be 0 (fully-open) to 6400 (fully-close)  If necessary, please modify this variable in the code. With the option `-v` on, positions in other unit format are printed for convenience. The following code fully closes the fingers.
+The unit of finger command can be by `{turn | mm | percent}`, which refers to turn of the motor, milimeter and percentage. The finger is essentially controlled by `turn`, and the rest units are propotional to `turn` for convenience. The value 0 indicates fully open, while `finger_maxTurn` represents fully closed. The value of `finger_maxTurn` may vary due to many factors. A proper reference value for a finger turn will be *0* (fully-open) to *6400* (fully-close)  If necessary, please modify this variable in the code. With the option `-v` on, positions in other unit format are printed for convenience. The following code fully closes the fingers.
 
 **eg**: `rosrun kinova_demo fingers_action_client.py m1n4s200 percent -- 100 100 `
 
@@ -238,7 +238,7 @@ The motion will stop once the publish on the topic is finished. Please be cautio
 ** Note on publish frequency **
 The joint velocity is set to publish at a frequency of 100Hz, due to the DSP inside the robot which loops each 10ms. Higher frequency will not have any influence on the speed. However, it will fill up a buffer (size of 2000) and the robot may continue to move a bit even after it stops receiving velocity topics. For a frequency lower than 100Hz, the robot will not able to achieve the requested velocity.
 
-Therefore, the publishing rate at 100Hz is not an optional argument, but a requirement.
+Therefore, the publishing rate at **100Hz** is not an optional argument, but a requirement.
 
 ### ROS service commands
 Users can home the robot by the command below. It takes no argument and brings the robot to pre-defined home position. The command supports customized home position that users can define by using the SDK or JacoSoft as well.

@@ -24,8 +24,7 @@
         <link name="${link_name}">
             <visual>
                 <geometry>
-                    <mesh
-                        filename="package://kinova_description/meshes/${link_mesh}.dae"/>
+                    <mesh filename="package://kinova_description/meshes/${link_mesh}.dae"/>
                 </geometry>
                 <material name="carbon_fiber">
                     <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
