@@ -63,11 +63,8 @@ def QuaternionNorm(Q_raw):
 
 def Quaternion2EulerXYZ(Q_raw):
     Q_normed = QuaternionNorm(Q_raw)
-    qx_ = Q_normed[0]
-    qy_ = Q_normed[1]
-    qz_ = Q_normed[2]
-    qw_ = Q_normed[3]
-
+    qx_, qy_, qz_, qw_  = Q_normed[0:4]
+            
     tx_ = math.atan2((2 * qw_ * qx_ - 2 * qy_ * qz_), (qw_ * qw_ - qx_ * qx_ - qy_ * qy_ + qz_ * qz_))
     ty_ = math.asin(2 * qw_ * qy_ + 2 * qx_ * qz_)
     tz_ = math.atan2((2 * qw_ * qz_ - 2 * qx_ * qy_), (qw_ * qw_ + qx_ * qx_ - qy_ * qy_ - qz_ * qz_))

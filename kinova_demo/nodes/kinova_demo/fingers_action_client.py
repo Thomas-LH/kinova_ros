@@ -111,8 +111,8 @@ def unitParser(unit_, finger_value_, relative_):
         finger_percent_ = [x / finger_maxTurn * 100.0 for x in finger_turn_]
 
     elif unit_ == 'mm':
-        # get absolute value
-        finger_turn_command = [x/1000 * finger_maxTurn / finger_maxDist for x in finger_value_]
+        # get absolute value 
+        finger_turn_command = [x/1000 * finger_maxTurn / finger_maxDist for x in finger_value_] # finger_value_ in mm
         if relative_:
             finger_turn_absolute_ = [finger_turn_command[i] + currentFingerPosition[i] for i in range(0, len(finger_value_))]
         else:
@@ -178,7 +178,7 @@ if __name__ == '__main__':
             exit()
         else:
             positions_temp1 = [max(0.0, n) for n in finger_turn]
-            positions_temp2 = [min(n, finger_maxTurn) for n in positions_temp1]
+            positions_temp2 = [min(n, finger_maxTurn) for n in positions_temp1] # limit the value of finger_turn 
             positions = [float(n) for n in positions_temp2]
 
         print('Sending finger position ...')
@@ -189,4 +189,4 @@ if __name__ == '__main__':
         print('program interrupted before completion')
 
 
-    verboseParser(args.verbose, positions)
+    verboseParser(args.verbose, positions) # display finger values

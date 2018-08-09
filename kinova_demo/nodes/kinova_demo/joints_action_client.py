@@ -27,7 +27,7 @@ def joint_angle_client(angle_set):
     action_address = '/' + prefix + 'driver/joints_action/joint_angles'
     client = actionlib.SimpleActionClient(action_address,
                                           kinova_msgs.msg.ArmJointAnglesAction)
-    client.wait_for_server()
+    client.wait_for_server() # infinite timeout as default
 
     goal = kinova_msgs.msg.ArmJointAnglesGoal()
 
@@ -40,7 +40,7 @@ def joint_angle_client(angle_set):
     goal.angles.joint7 = angle_set[6]
 
     client.send_goal(goal)
-    if client.wait_for_result(rospy.Duration(20.0)):
+    if client.wait_for_result(rospy.Duration(20.0)): # true if the goal finished
         return client.get_result()
     else:
         print('        the joint angle action timed-out')
@@ -148,13 +148,13 @@ if __name__ == '__main__':
 
     # currentJointCommand = [0]*arm_joint_number
     # KinovaType defines AngularInfo has 7DOF, so for published topics on joints.
-    currentJointCommand = [0]*7
+    currentJointCommand = [0]*arm_joint_number
 
     if len(args.joint_value) != arm_joint_number:
         print('Number of input values {} is not equal to number of joints {}. Please run help to check number of joints with different robot type.'.format(len(args.joint_value), arm_joint_number))
         sys.exit(0)
 
-    # get Current finger position if relative position
+    # get Current joint position
     getcurrentJointCommand(prefix)
     joint_degree, joint_radian = unitParser(args.unit, args.joint_value, args.relative)
 
