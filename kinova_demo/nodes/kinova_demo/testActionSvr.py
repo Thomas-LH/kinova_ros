@@ -18,7 +18,7 @@ if __name__ == '__main__':
 
 		#test joint srv - move robot to 180 pos
 		if (interactive == True):        
-			nb = raw_input('Moving robot to candle like position, press return, n to skip')
+			nb = raw_input('Moving robot to candle like position, press return, n to skip') # func just in python2
 		if (nb != 'n' and nb != 'N'):
 			result = joint_position_client([180]*7, prefix)
 
