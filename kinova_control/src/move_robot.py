@@ -24,7 +24,7 @@ def moveJoint (jointcmds,prefix,nbJoints):
   pub = rospy.Publisher(topic_name, JointTrajectory, queue_size=1)
   jointCmd = JointTrajectory()  
   point = JointTrajectoryPoint()
-  jointCmd.header.stamp = rospy.Time.now() + rospy.Duration.from_sec(0.0);  
+  jointCmd.header.stamp = rospy.Time.now() + rospy.Duration.from_sec(0.0)  
   point.time_from_start = rospy.Duration.from_sec(5.0)
   for i in range(0, nbJoints):
     jointCmd.joint_names.append(prefix +'_joint_'+str(i+1))
@@ -45,7 +45,7 @@ def moveFingers (jointcmds,prefix,nbJoints):
   pub = rospy.Publisher(topic_name, JointTrajectory, queue_size=1)  
   jointCmd = JointTrajectory()  
   point = JointTrajectoryPoint()
-  jointCmd.header.stamp = rospy.Time.now() + rospy.Duration.from_sec(0.0);  
+  jointCmd.header.stamp = rospy.Time.now() + rospy.Duration.from_sec(0.0)
   point.time_from_start = rospy.Duration.from_sec(5.0)
   for i in range(0, nbJoints):
     jointCmd.joint_names.append(prefix +'_joint_finger_'+str(i+1))

@@ -16,7 +16,7 @@ import argparse
 def argumentParser(argument):
     	""" Argument parser """
     	parser = argparse.ArgumentParser(description='Drive robot joint to command position')
-    	parser.add_argument('kinova_robotType', metavar='kinova_robotType', type=str, default='j2n6a300',
+    	parser.add_argument('kinova_robotType', metavar='kinova_robotType', type=str, default='j2s7s300',
                         help='kinova_RobotType is in format of: [{j|m|r|c}{1|2}{s|n}{4|6|7}{s|a}{2|3}{0}{0}]. eg: j2n6a300 refers to jaco v2 6DOF assistive 3fingers. Please be noted that not all options are valided for different robot types.')
 	args_ = parser.parse_args(argument)
 	prefix = args_.kinova_robotType + "_"
@@ -89,7 +89,7 @@ def gripper_client(finger_positions, prefix):
         return client.get_result()
     else:
         client.cancel_all_goals()
-        rospy.WARN('        the gripper action timed-out')
+        print('        the gripper action timed-out')
         return None
 
 
@@ -131,13 +131,13 @@ def publishVelCmd(jointCmds, duration_sec, prefix):
   topic_name = '/' + prefix + 'driver/in/joint_velocity'
   pub = rospy.Publisher(topic_name, kinova_msgs.msg.JointVelocity, queue_size=1)
   jointCmd = kinova_msgs.msg.JointVelocity()
-  jointCmd.joint1 = jointCmds[0];
-  jointCmd.joint2 = jointCmds[1];
-  jointCmd.joint3 = jointCmds[2];
-  jointCmd.joint4 = jointCmds[3];
-  jointCmd.joint5 = jointCmds[4];
-  jointCmd.joint6 = jointCmds[5];
-  jointCmd.joint7 = jointCmds[6];
+  jointCmd.joint1 = jointCmds[0]
+  jointCmd.joint2 = jointCmds[1]
+  jointCmd.joint3 = jointCmds[2]
+  jointCmd.joint4 = jointCmds[3]
+  jointCmd.joint5 = jointCmds[4]
+  jointCmd.joint6 = jointCmds[5]
+  jointCmd.joint7 = jointCmds[6]
   joint_cmd_for_error_comp = jointCmd
   count = 0		
   rate = rospy.Rate(100)
@@ -159,12 +159,12 @@ def publishCatesianVelocityCommands(cartVel, duration_sec, prefix):
 	#publish joint torque commands
 	pub = rospy.Publisher(topic_name, kinova_msgs.msg.PoseVelocity, queue_size=1)
 	poseVelCmd = kinova_msgs.msg.PoseVelocity()
-	poseVelCmd.twist_linear_x = cartVel[0];
-	poseVelCmd.twist_linear_y = cartVel[1];
-	poseVelCmd.twist_linear_z = cartVel[2];
-	poseVelCmd.twist_angular_x = cartVel[3];
-	poseVelCmd.twist_angular_x = cartVel[4];
-	poseVelCmd.twist_angular_x = cartVel[5];
+	poseVelCmd.twist_linear_x = cartVel[0]
+	poseVelCmd.twist_linear_y = cartVel[1]
+	poseVelCmd.twist_linear_z = cartVel[2]
+	poseVelCmd.twist_angular_x = cartVel[3]
+	poseVelCmd.twist_angular_x = cartVel[4]
+	poseVelCmd.twist_angular_x = cartVel[5]
 	count = 0	
 	rate = rospy.Rate(100)
 	while (count < 100*duration_sec):
@@ -198,13 +198,13 @@ def publishForceCmd(force_cmds, duration_sec, prefix):
 	#publish joint torque commands
 	topic_name = '/' + prefix + 'driver/in/cartesian_force'
 	pub = rospy.Publisher(topic_name, kinova_msgs.msg.CartesianForce, queue_size=1)
-        force = kinova_msgs.msg.CartesianForce()
-	force.force_x = force_cmds[0];
-	force.force_y = force_cmds[1];
-	force.force_z = force_cmds[2];
-	force.torque_x = force_cmds[3];
-	force.torque_y = force_cmds[4];
-	force.torque_z = force_cmds[5];
+    force = kinova_msgs.msg.CartesianForce()
+	force.force_x = force_cmds[0]
+	force.force_y = force_cmds[1]
+	force.force_z = force_cmds[2]
+	force.torque_x = force_cmds[3]
+	force.torque_y = force_cmds[4]
+	force.torque_z = force_cmds[5]
 	count = 0		
 	rate = rospy.Rate(100)
 	L = []
@@ -256,13 +256,13 @@ def publishTorqueCmd(jointCmds, duration_sec, prefix):
   topic_name = '/' + prefix + 'driver/in/joint_torque'
   pub = rospy.Publisher(topic_name, kinova_msgs.msg.JointTorque, queue_size=1)
   jointCmd = kinova_msgs.msg.JointTorque()
-  jointCmd.joint1 = jointCmds[0];
-  jointCmd.joint2 = jointCmds[1];
-  jointCmd.joint3 = jointCmds[2];
-  jointCmd.joint4 = jointCmds[3];
-  jointCmd.joint5 = jointCmds[4];
-  jointCmd.joint6 = jointCmds[5];
-  jointCmd.joint7 = jointCmds[6];
+  jointCmd.joint1 = jointCmds[0]
+  jointCmd.joint2 = jointCmds[1]
+  jointCmd.joint3 = jointCmds[2]
+  jointCmd.joint4 = jointCmds[3]
+  jointCmd.joint5 = jointCmds[4]
+  jointCmd.joint6 = jointCmds[5]
+  jointCmd.joint7 = jointCmds[6]
   count = 0		
   rate = rospy.Rate(100)
   L = []
@@ -298,8 +298,8 @@ def ZeroTorque(prefix):
 	service_address = '/' + prefix + 'driver/in/set_zero_torques'
 	rospy.wait_for_service(service_address)
 	try:
-		zeroTorques = rospy.ServiceProxy(service_address, ZeroTorques)
-		zeroTorques()           
+		zeroTorques = rospy.ServiceProxy(service_address, ZeroTorques) #handle for service
+		zeroTorques()  #call service         
 	except rospy.ServiceException, e:
 		print "Service call failed: %s"%e
 		return None	
