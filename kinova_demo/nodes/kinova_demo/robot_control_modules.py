@@ -163,8 +163,8 @@ def publishCatesianVelocityCommands(cartVel, duration_sec, prefix):
 	poseVelCmd.twist_linear_y = cartVel[1]
 	poseVelCmd.twist_linear_z = cartVel[2]
 	poseVelCmd.twist_angular_x = cartVel[3]
-	poseVelCmd.twist_angular_x = cartVel[4]
-	poseVelCmd.twist_angular_x = cartVel[5]
+	poseVelCmd.twist_angular_y = cartVel[4]
+	poseVelCmd.twist_angular_z = cartVel[5] # the last three lines were same to each other, I think it's a mistake. 
 	count = 0	
 	rate = rospy.Rate(100)
 	while (count < 100*duration_sec):
@@ -198,7 +198,7 @@ def publishForceCmd(force_cmds, duration_sec, prefix):
 	#publish joint torque commands
 	topic_name = '/' + prefix + 'driver/in/cartesian_force'
 	pub = rospy.Publisher(topic_name, kinova_msgs.msg.CartesianForce, queue_size=1)
-    force = kinova_msgs.msg.CartesianForce()
+        force = kinova_msgs.msg.CartesianForce()
 	force.force_x = force_cmds[0]
 	force.force_y = force_cmds[1]
 	force.force_z = force_cmds[2]
@@ -257,7 +257,7 @@ def publishTorqueCmd(jointCmds, duration_sec, prefix):
   pub = rospy.Publisher(topic_name, kinova_msgs.msg.JointTorque, queue_size=1)
   jointCmd = kinova_msgs.msg.JointTorque()
   jointCmd.joint1 = jointCmds[0]
-  jointCmd.joint2 = jointCmds[1]
+  jointCmd.joint2 = jointCmds[1] 
   jointCmd.joint3 = jointCmds[2]
   jointCmd.joint4 = jointCmds[3]
   jointCmd.joint5 = jointCmds[4]

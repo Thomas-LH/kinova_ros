@@ -1,0 +1,8 @@
+<launch>
+    <include file="$(find j2s7s300_moveit_config)/launch/demo.launch"/>
+
+    <arg name="control_type" default="moveit_obstacles.py"/>
+
+    <node name="moveit_control" pkg="kinova_control" type="$(arg control_type)" respawn="false" output="screen">
+    </node>
+</launch>
