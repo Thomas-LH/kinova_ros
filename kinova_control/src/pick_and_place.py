@@ -3,7 +3,7 @@
 import rospy, sys
 import moveit_commander
 from moveit_commander import MoveGroupCommander, PlanningSceneInterface
-from moveit_msgs.msg import PlanningScene, ObjectColor, Grasp, GripperTranslation, MoveItErrorCodes
+from moveit_msgs.msg import PlanningScene, ObjectColor, Grasp, PlaceLocation, GripperTranslation, MoveItErrorCodes
 from geometry_msgs.msg import PoseStamped, Pose, Quaternion
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
@@ -20,7 +20,7 @@ GRIPPER_EFFORT = [1.0, 1.0, 1.0]
 GRIPPER_FRAME = 'j2s7s300_end_effector'
 REFERENCE_FRAME  = 'root'
 
-class Moveit_Obstacle():
+class MoveitObstacle():
     def __init__(self):
         moveit_commander.roscpp_initialize(sys.argv)
         rospy.init_node('moveit_demo')
@@ -46,60 +46,46 @@ class Moveit_Obstacle():
         scene.remove_world_object(box1_id)
         scene.remove_world_object(box2_id)
         scene.remove_world_object(table_id)
+        scene.remove_world_object(target_id)
         rospy.sleep(1)
 
         table_ground = 0.55
         table_size = [0.2, 0.7, 0.01]
-        box1_size = [0.1, 0.05, 0.05]
+        box1_size = [0.02, 0.9, 0.6]
         box2_size = [0.05, 0.05, 0.15]
         target_size = [0.03, 0.06, 0.10]
 
         table_pose = PoseStamped()
-        table_pose.header.frame_id = REFERENCE_FRAME    
-        table_pose.pose.position.x = 0.7
-        table_pose.pose.position.y = 0.0
-        table_pose.pose.position.z = table_ground + table_size[2]/2.0
-        table_pose.pose.orientation.w = 1.0
+        table_pose.header.frame_id = REFERENCE_FRAME
+        self.setPose(table_pose, [0.7, 0.0, table_ground + table_size[2]/2.0])    
         scene.add_box(table_id, table_pose, table_size)
 
         box1_pose = PoseStamped()
-        box1_pose.header.frame_id = REFERENCE_FRAME 
-        box1_pose.pose.position.x = 0.65
-        box1_pose.pose.position.y = -0.1
-        box1_pose.pose.position.z = table_ground + table_size[2] + box1_size[2]/2.0
-        box1_pose.pose.orientation.w = 1.0
-    #    scene.add_box(box1_id, box1_pose, box1_size)
+        box1_pose.header.frame_id = REFERENCE_FRAME
+        self.setPose(box1_pose, [-0.36, 0.0, box1_size[2]/2.0]) 
+        scene.add_box(box1_id, box1_pose, box1_size)
 
         box2_pose = PoseStamped()
-        box2_pose.header.frame_id = REFERENCE_FRAME 
-        box2_pose.pose.position.x = 0.63
-        box2_pose.pose.position.y = 0.15
-        box2_pose.pose.position.z = table_ground + table_size[2] + box2_size[2]/2.0
-        box2_pose.pose.orientation.w = 1.0
-    #    scene.add_box(box2_id, box2_pose, box2_size)
+        box2_pose.header.frame_id = REFERENCE_FRAME
+        self.setPose(box2_pose, [0.63, -0.12, table_ground + table_size[2] + box2_size[2]/2.0])
+        scene.add_box(box2_id, box2_pose, box2_size)
 
         target_pose = PoseStamped()
-        target_pose.header.frame_id = REFERENCE_FRAME   
-        target_pose.pose.position.x = 0.62
-        target_pose.pose.position.y = 0.0
-        target_pose.pose.position.z = table_ground + table_size[2] + target_size[2]/2.0
-        target_pose.pose.orientation.w = 1.0
+        target_pose.header.frame_id = REFERENCE_FRAME
+        self.setPose(target_pose, [0.62, 0.0, table_ground + table_size[2] + target_size[2]/2.0])
         scene.add_box(target_id, target_pose, target_size)
         
         self.setColor(table_id, 0.8, 0.0, 1.0)
-    #    self.setColor(box1_id, 0.8, 0.4, 1.0)
-    #    self.setColor(box2_id, 0.8, 0.4, 1.0)
+        self.setColor(box1_id, 0.9, 0.9, 0.9)
+        self.setColor(box2_id, 0.8, 0.4, 1.0)
         self.setColor(target_id, 0.5, 0.4, 1.0)
         self.sendColors()
         
         arm.set_support_surface_name(table_id)
 
         place_pose = PoseStamped()
-        place_pose.header.frame_id = REFERENCE_FRAME    
-        place_pose.pose.position.x = 0.64
-        place_pose.pose.position.y = -0.18
-        place_pose.pose.position.z = table_ground + table_size[2] + target_size[2]/2.0
-        place_pose.pose.orientation.w = 1.0
+        place_pose.header.frame_id = REFERENCE_FRAME
+        self.setPose(place_pose, [0.64, -0.25, table_ground + table_size[2] + target_size[2]/2.0])
 
         arm.set_named_target('Vertical')
         arm.go()
@@ -132,7 +118,7 @@ class Moveit_Obstacle():
         if result == MoveItErrorCodes.SUCCESS:
             result = None
             n_attempts = 0
-            places = self.make_places(place_pose)
+            places = self.make_places(place_pose, [table_id])
 
         while result != MoveItErrorCodes.SUCCESS and n_attempts < max_place_attempts:
             for place in places:
@@ -147,6 +133,21 @@ class Moveit_Obstacle():
         rospy.sleep(2)
         moveit_commander.roscpp_shutdown()
         moveit_commander.os._exit(0)
+
+    def setPose(self, pose_stamped_object, position, orientation=None):
+        if type(pose_stamped_object) is not PoseStamped:
+            raise Exception('Parameter pose_stamped_object must be a PoseStamped object')
+        pose_stamped_object.pose.position.x = position[0]
+        pose_stamped_object.pose.position.y = position[1]
+        pose_stamped_object.pose.position.z = position[2]
+
+        if orientation is None:
+            pose_stamped_object.pose.orientation.w = 1.0
+        else:
+            pose_stamped_object.pose.orientation.x = orientation[0]
+            pose_stamped_object.pose.orientation.y = orientation[1]
+            pose_stamped_object.pose.orientation.z = orientation[2]
+            pose_stamped_object.pose.orientation.w = orientation[3] 
     
     def setColor(self, name, r, g, b, a=0.9):
         color = ObjectColor()
@@ -170,12 +171,12 @@ class Moveit_Obstacle():
         g = Grasp()
         g.pre_grasp_posture = self.make_gripper_posture(GRIPPER_OPEN)
         g.grasp_posture = self.make_gripper_posture(GRIPPER_CLOSED)
-        g.pre_grasp_approach = self.make_gripper_translation(0.02, 0.1, [1.0, 0.0, 0.0])
-        g.post_grasp_retreat = self.make_gripper_translation(0.1, 0.15, [0.0, -1.0, 1.0])
+        g.pre_grasp_approach = self.make_gripper_translation(0.05, 0.07, [1.0, 0.0, 0.0])
+        g.post_grasp_retreat = self.make_gripper_translation(0.22, 0.26, [-1.0, 0.0, 0.0])
 
         g.grasp_pose = initial_pose_stamped
-        roll_vals = [0, 0.1, -0.1, 0.2, -0.2, 0.3, -0.3]
-        yaw_vals = [0, 0.1, -0.1, 0.2, -0.2, 0.3, -0.3]
+        roll_vals = [0, 0.1, -0.1, 0.15, -0.15, 0.25, -0.25]
+        yaw_vals = [0]
         pitch_vals = [1.57]
         z_vals =[0]
 
@@ -224,9 +225,13 @@ class Moveit_Obstacle():
 
         return g
 
-    def make_places(self, init_pose):
-        place = PoseStamped()
-        place = init_pose
+    def make_places(self, init_pose, allowed_touch_objects):
+        place = PlaceLocation()
+        place.post_place_posture = self.make_gripper_posture(GRIPPER_OPEN)
+        place.pre_place_approach = self.make_gripper_translation(0.2, 0.25, [1.0, 0.0, 0.0])
+        place.post_place_retreat = self.make_gripper_translation(0.1, 0.12, [-1.0, 0.0, 0.0])
+
+        place.place_pose = init_pose 
         x_vals = [0, 0.005, 0.01, 0.015, -0.005, -0.01, -0.015]
         y_vals = [0, 0.005, 0.01, 0.015, -0.005, -0.01, -0.015]
 
@@ -238,20 +243,23 @@ class Moveit_Obstacle():
             for pitch in pitch_vals:
                 for y in y_vals:
                     for x in x_vals:
-                        place.pose.position.x = init_pose.pose.position.x + x
-                        place.pose.position.y = init_pose.pose.position.y + y
+                        place.place_pose.pose.position.x = init_pose.pose.position.x + x
+                        place.place_pose.pose.position.y = init_pose.pose.position.y + y
 
                         q = quaternion_from_euler(0, pitch, yaw)
 
-                        place.pose.orientation.x = q[0]
-                        place.pose.orientation.y = q[1]
-                        place.pose.orientation.z = q[2]
-                        place.pose.orientation.w = q[3]
+                        place.place_pose.pose.orientation.x = q[0]
+                        place.place_pose.pose.orientation.y = q[1]
+                        place.place_pose.pose.orientation.z = q[2]
+                        place.place_pose.pose.orientation.w = q[3]
+                        place.id = str(len(places))
+                        place.allowed_touch_objects = allowed_touch_objects
+
                         places.append(deepcopy(place))
         return places
     
 if __name__ == '__main__':
     try:
-        Moveit_Obstacle()
+        MoveitObstacle()
     except KeyboardInterrupt:
         raise
