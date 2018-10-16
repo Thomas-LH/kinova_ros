@@ -36,7 +36,7 @@ PickPlace::PickPlace(ros::NodeHandle &nh):
 
     ros::NodeHandle pn("~");
 
-    nh_.param<std::string>("/robot_type",robot_type_,"j2n6s300");
+    nh_.param<std::string>("/robot_type",robot_type_,"j2s7s300");
     nh_.param<bool>("/robot_connected",robot_connected_,true);
 
     if (robot_connected_)
@@ -218,7 +218,8 @@ void PickPlace::build_workscene()
     planning_scene_msg_.world.collision_objects.push_back(co_);
     planning_scene_msg_.is_diff = true;
     pub_planning_scene_diff_.publish(planning_scene_msg_);
-    ros::WallDuration(0.1).sleep();}
+    ros::WallDuration(0.1).sleep();
+}
 
 void PickPlace::clear_obstacle()
 {

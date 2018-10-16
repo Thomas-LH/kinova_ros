@@ -34,8 +34,8 @@ class MoveitObstacle():
 
         arm = MoveGroupCommander('arm')
         end_effector_link = arm.get_end_effector_link()
-        arm.set_goal_position_tolerance(0.01)
-        arm.set_goal_orientation_tolerance(0.05)
+    #    arm.set_goal_position_tolerance(0.02)
+    #    arm.set_goal_orientation_tolerance(0.03)
         arm.allow_replanning(True)
         arm.set_planning_time(5)
 
@@ -131,7 +131,7 @@ class MoveitObstacle():
 
         place_pose = PoseStamped()
         place_pose.header.frame_id = REFERENCE_FRAME
-        self.setPose(place_pose, [0.63, -0.3, table_ground + table_size[2] + target_size[2]/2.0])
+        self.setPose(place_pose, [0.62, -0.22, table_ground + table_size[2] + target_size[2]/2.0])
         
         grasp_pose = target_pose
         grasp_init_orientation = Quaternion()
@@ -142,15 +142,20 @@ class MoveitObstacle():
         grasp_pose.pose.orientation.w = grasp_init_orientation[3]
         grasp_pose.pose.position.x -= 0.02
         rospy.loginfo('quaterion: '+ str(grasp_pose.pose.orientation))
+
+        place_pose.pose.orientation.x = grasp_init_orientation[0]
+        place_pose.pose.orientation.y = grasp_init_orientation[1]
+        place_pose.pose.orientation.z = grasp_init_orientation[2]
+        place_pose.pose.orientation.w = grasp_init_orientation[3]
         
-        orientation_constraint.header = place_pose.header
+        orientation_constraint.header = grasp_pose.header
         orientation_constraint.link_name = end_effector_link
         orientation_constraint.orientation.x = grasp_init_orientation[0]
         orientation_constraint.orientation.y = grasp_init_orientation[1]
         orientation_constraint.orientation.z = grasp_init_orientation[2]
         orientation_constraint.orientation.w = grasp_init_orientation[3]
-        orientation_constraint.absolute_x_axis_tolerance = 0.05
-        orientation_constraint.absolute_y_axis_tolerance = 0.05
+        orientation_constraint.absolute_x_axis_tolerance = 0.03
+        orientation_constraint.absolute_y_axis_tolerance = 0.03
         orientation_constraint.absolute_z_axis_tolerance = 3.14
         orientation_constraint.weight = 1.0
         constraints.orientation_constraints.append(orientation_constraint)
@@ -165,12 +170,14 @@ class MoveitObstacle():
             rospy.loginfo('Pick attempt:' + str(n_attempts))
             rospy.sleep(0.2)
         
-    #    arm.set_path_constraints(constraints)
-
+        arm.set_path_constraints(constraints)
+        arm.set_pose_target(place_pose)
+        arm.go()
+        '''
         if result == MoveItErrorCodes.SUCCESS:
             result = None
             n_attempts = 0
-            places = self.make_places(place_pose, [table_id], [0.15, 0.2, [1.0, 0.0, 0.0]], [0.1, 0.12, [-1.0, 0.0, 0.0]])
+            places = self.make_places(place_pose, [table_id], [0.8, 0.13, [1.0, 0.0, 0.0]], [0.1, 0.12, [-1.0, 0.0, 0.0]])
 
         while result != MoveItErrorCodes.SUCCESS and n_attempts < max_place_attempts:
             for place in places:
@@ -181,6 +188,7 @@ class MoveitObstacle():
             n_attempts += 1
             rospy.loginfo('Place attempt:' + str(n_attempts))
             rospy.sleep(0.2)
+        '''
         
         '''
         grasp_pose = place_pose
