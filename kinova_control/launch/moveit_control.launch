@@ -1,8 +1,11 @@
 <launch>
     <include file="$(find j2s7s300_moveit_config)/launch/demo.launch"/>
 
-    <arg name="control_type" default="moveit_obstacles.py"/>
+    <arg name="control_client" default="pick_place_client.py"/>
+    <arg name="control_server" default="pick_place_server.py"/>
 
-    <node name="moveit_control" pkg="kinova_control" type="$(arg control_type)" respawn="false" output="screen">
+    <node name="arm_action_client" pkg="kinova_control" type="$(arg control_client)" launch-prefix="gnome-terminal -e" respawn="false" output="screen">
+    </node>
+    <node name="arm_action_server" pkg="kinova_control" type="$(arg control_server)" respawn="true" output="screen">
     </node>
 </launch>

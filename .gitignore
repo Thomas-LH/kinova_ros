@@ -55,3 +55,6 @@ kvh_driver/src/kvh_driver/
 
 # VS code config
 .vscode/
+
+# CSS
+.css

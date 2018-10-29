@@ -5,6 +5,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   actionlib
   actionlib_msgs
+  std_msgs
   geometry_msgs
 )
 
@@ -21,6 +22,7 @@ add_message_files(
   KinovaPose.msg
   PoseVelocity.msg
   CartesianForce.msg
+  StateAndObject.msg
 )
 
 add_service_files(
@@ -45,12 +47,14 @@ add_action_files(DIRECTORY action
   ArmPose.action
   Arm_KinovaPose.action
   SetFingersPosition.action
+  PoseAndSize.action
 )
 
 generate_messages(
   DEPENDENCIES
   actionlib_msgs
   geometry_msgs
+  std_msgs
 )
 
 catkin_package(

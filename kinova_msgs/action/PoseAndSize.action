@@ -1,0 +1,9 @@
+# Goal
+geometry_msgs/PoseStamped object_pose
+geometry_msgs/Point object_size
+---
+# Result
+geometry_msgs/PoseStamped arm_pose
+---
+# Feedback message
+geometry_msgs/PoseStamped arm_pose

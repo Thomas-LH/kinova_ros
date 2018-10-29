@@ -1,0 +1,3 @@
+bool start
+geometry_msgs/PoseStamped object_pose
+geometry_msgs/Point object_size

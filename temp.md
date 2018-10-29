@@ -1,4 +1,4 @@
-### gazebo simulation
+## gazebo simulation
 launch kinova_gazebo/launch/robot_launch.launch 文件　加载环境模型和虚拟控制器  
 发布 jointTrajectory 命令到 /robot_name/effort_joint_trajectory_controller/command 话题控制模型  
 **problem**:  
@@ -19,7 +19,7 @@ kinova 7dof 机械臂 与　智能底座
 ros通讯:话题（topic）,服务（server）,动作（action）
 机械臂控制可使用moveit！软件包，在建立好实际机器人的模型后，在moveit！中可配置相关的参数（组，末端执行器等），之后可配置使用图形界面对机器人进行控制或使用脚本进行控制。图形界面使用rviz插件，脚本控制需使用move_group接口。
 
-### grasp demo
+## grasp demo
 
 1. 参考系的选取要注意，抓取的方向向量会受影响
 2. 抓取位姿预设值要注意末端执行器的方向
