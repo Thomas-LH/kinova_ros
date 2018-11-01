@@ -1,3 +1,10 @@
+'''
+@Description: Action server for controling kinova arm
+@Author: Binghui Li
+@Date: 2018-10-29 14:37:45
+@LastEditTime: 2018-11-01 18:33:46
+@LastEditors: Binghui Li
+'''
 #! /usr/bin/env python
 
 import rospy, sys
@@ -23,8 +30,20 @@ GRIPPER_EFFORT = [1.0, 1.0, 1.0]
 GRIPPER_FRAME = 'j2s7s300_end_effector'
 REFERENCE_FRAME  = 'world'
 
-## class
+
 class PPServer(object):
+    """
+    PPServer class manages action server and grasping functions
+
+    Attributes:
+        _scene: instance of class PlanningSceneInterface
+        _scene_pub: instance of class Publisher
+        colors: store objects' colors
+        max_pick_attempts: max attempts for picking planning
+        max_place_attempts: max attempts for placing planning
+        _server: instance of class SimpleActionServer
+    """
+
     _result = kinova_msgs.msg.PoseAndSizeResult()
     def __init__(self):
         moveit_commander.roscpp_initialize(sys.argv)
@@ -37,14 +56,18 @@ class PPServer(object):
         # initialize action server, type is PoseAndSizeAction defined in kinova_msgs/action,
         # callback function is PickAndPlace
         self._server = actionlib.SimpleActionServer("PickAndPlace", kinova_msgs.msg.PoseAndSizeAction, execute_cb=self.PickAndPlace, auto_start=False)
-        # start action server
-        self._server.start()
+        self._server.start() # start action server
 
 
+    '''
+    Control picking and placing actions
+    @param:
+        goal: action goal for picking and placing
+    @return: None
+    '''
     def PickAndPlace(self, goal):
         arm = MoveGroupCommander('arm')
-        # get end effector link name
-        end_effector_link = arm.get_end_effector_link()
+        end_effector_link = arm.get_end_effector_link() # get end effector link name
         arm.allow_replanning(True)
         arm.set_planning_time(5)
         # setting object id
@@ -78,6 +101,7 @@ class PPServer(object):
         target_size = [goal.object_size.x, goal.object_size.y, goal.object_size.z]
         target_position = [goal.object_pose.pose.position.x, goal.object_pose.pose.position.y, goal.object_pose.pose.position.z]
         self.scene_manage(target_id, target_size, target_position)
+
         # setting object color
         self.setColor(table_id, 0.8, 0.0, 0.0, 1.0)
         self.setColor(table2_id, 0.8, 0.0, 0.0)
@@ -89,14 +113,15 @@ class PPServer(object):
         self.setColor(side_id, 0.8, 0.0, 0.0, 1.0)
         self.sendColors()
 
-        arm.set_support_surface_name(table_id)
-        # setting place position
+        arm.set_support_surface_name(table_id) # avoid collision detection
+
+        # setting placing position
         place_pose = PoseStamped()
         place_pose.header.frame_id = REFERENCE_FRAME
         place_orientation = Quaternion()
         place_orientation = quaternion_from_euler(0.0, 0.0, -3.14)
         self.setPose(place_pose, [-0.24, -0.22, table2_ground_size[2] + table2_size[2] + target_size[2]/2.0], list(place_orientation))
-
+        # setting grasping position 
         grasp_pose = goal.object_pose
         grasp_init_orientation = Quaternion()
         grasp_init_orientation = quaternion_from_euler(0.0, 1.57, 0.0)        
@@ -145,6 +170,14 @@ class PPServer(object):
     #    moveit_commander.roscpp_shutdown()
     #    moveit_commander.os._exit(0)
 
+    '''
+    Setting object's size and position, then adding them to scene 
+    @param:
+        obj_id: ID of object
+        obj_size: size of object
+        obj_pose: position of object 
+    @return: None
+    '''
     def scene_manage(self, obj_id, obj_size, obj_pose):
         self._scene.remove_world_object(obj_id)
         obj_pos = PoseStamped()
@@ -152,6 +185,14 @@ class PPServer(object):
         self.setPose(obj_pos, obj_pose)    
         self._scene.add_box(obj_id, obj_pos, obj_size)
 
+    '''
+    Setting posestamped object
+    @param:
+        pose_stamped_object: posestamped object
+        position: positon of object
+        orientation: orientation of object
+    @return: 
+    '''
     def setPose(self, pose_stamped_object, position, orientation=None):
         if type(pose_stamped_object) is not PoseStamped:
             raise Exception('Parameter pose_stamped_object must be a PoseStamped object')
@@ -167,6 +208,13 @@ class PPServer(object):
             pose_stamped_object.pose.orientation.z = orientation[2]
             pose_stamped_object.pose.orientation.w = orientation[3] 
     
+    '''
+    Setting colors of object 
+    @param:
+        name: ID of object
+        r, g, b, a: color and transparency of object
+    @return: None
+    '''
     def setColor(self, name, r, g, b, a=0.9):
         color = ObjectColor()
         color.id = name
@@ -176,6 +224,10 @@ class PPServer(object):
         color.color.a = a
         self.colors[name] = color
 
+    '''
+    Sending colors to scene
+    @return: None
+    '''
     def sendColors(self):
         p = PlanningScene()
         p.is_diff = True
@@ -185,6 +237,16 @@ class PPServer(object):
 
         self._scene_pub.publish(p)
 
+    '''
+    Generating grasp postures
+    @param:
+        initial_pose_stamped: initial stamped grsap pose
+        allowed_touch_objects: objects which do not need collision detection
+        pre: pre-grasp distance and orientation
+        post: retreat distance and orientation
+    @return: 
+        grasp postures
+    '''
     def make_grasps(self, initial_pose_stamped, allowed_touch_objects, pre, post):
         g = Grasp()
         g.pre_grasp_posture = self.make_gripper_posture(GRIPPER_OPEN)
@@ -220,6 +282,13 @@ class PPServer(object):
 
         return grasps
 
+    '''
+    Setting grasp posture
+    @param:
+        joint_positions: posture for fingers 
+    @return: 
+        JointTrajectory object
+    '''
     def make_gripper_posture(self, joint_positions):
         t = JointTrajectory()
         t.joint_names = GRIPPER_JOINT_NAMES
@@ -231,6 +300,15 @@ class PPServer(object):
 
         return t
 
+    '''
+    Setting gripper translation
+    @param:
+        min_dist: min distance of pre_posture
+        desired: desired distance of pre_posture
+        vector: orientation vector for translation
+    @return: 
+        GripperTranslation object
+    '''
     def make_gripper_translation(self, min_dist, desired, vector):
         g = GripperTranslation()
         g.direction.vector.x = vector[0]
@@ -243,6 +321,18 @@ class PPServer(object):
 
         return g
 
+    '''
+    Generating placing postures
+    @param:
+        init_pose: initial stamped place pose
+        allowed_touch_objects: objects which do not need collision detection
+        pre: pre-place distance and orientation
+        post: retreat distance and orientation
+        set_rpy: flag for setting roll, pitch, yaw
+        roll_vals, pitch_vals, yaw_vals: orientation of target
+    @return: 
+        place postures
+    '''
     def make_places(self, init_pose, allowed_touch_objects, pre, post, set_rpy = 0,roll_vals=[0], pitch_vals=[0], yaw_vals=[0]):
         place = PlaceLocation()
         place.post_place_posture = self.make_gripper_posture(GRIPPER_OPEN)

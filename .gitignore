@@ -57,4 +57,4 @@ kvh_driver/src/kvh_driver/
 .vscode/
 
 # CSS
-.css
+*.css
