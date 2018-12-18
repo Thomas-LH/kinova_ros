@@ -149,7 +149,7 @@ roslaunch kinova_bringup kinova_robot.launch kinova_robotType:=j2n6s300 kinova_r
 
 These parameters are optional and can be dropped off when only one robot is connected.
 
-**use_urdf** specifies whether the kinematic solution is provided by the URDF model. This is recommended and is the default option.
+**use_urdf** specifies whether the ***kinematic solution is provided by the URDF model***. This is recommended and is the default option.
 
 When `use_urdf:=true` (default value), the kinematic solution is automatically solved by the URDF model. 
 The robot can be virtually presented in Rviz and the frames in Rviz are located at each of the joints. 

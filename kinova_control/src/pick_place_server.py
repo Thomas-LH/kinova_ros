@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 '''
 @Description: Action server for controling kinova arm
 @Author: Binghui Li
@@ -5,7 +6,7 @@
 @LastEditTime: 2018-11-01 18:33:46
 @LastEditors: Binghui Li
 '''
-#! /usr/bin/env python
+
 
 import rospy, sys
 import roslib
@@ -82,22 +83,24 @@ class PPServer(object):
         rospy.sleep(1)
         # setting object size
         table_ground = 0.55
-        table_size = [0.2, 0.7, 0.01]
-        table2_size = [0.25, 0.6, 0.01]
-        table2_ground_size = [0.02, 0.9, 0.6]
+        table_size = [0.7, 0.2, 0.01]
+        table2_size = [0.6, 0.25, 0.01]
+        table2_ground_size = [0.9, 0.02, 0.6]
         box2_size = [0.05, 0.05, 0.15]
-        wall_size = [0.01, 0.9, 0.6]
+        wall_size = [0.9, 0.01, 0.6]
         ground_size = [3, 3, 0.01]
-        side_size = [0.01, 0.7, table_ground]
+        side_size = [0.7, 0.01, table_ground]
         # setting object pose and add to the world
-        self.scene_manage(table2_ground_id, table2_ground_size, [-0.36, 0.0, table2_ground_size[2]/2.0])
-        self.scene_manage(box2_id, box2_size, [0.63, -0.12, table_ground + table_size[2] + box2_size[2]/2.0])
-        self.scene_manage(table_id, table_size, [0.7, 0.0, table_ground + table_size[2]/2.0])
-        self.scene_manage(table2_id, table2_size, [-0.325, 0.0, table2_ground_size[2] + table2_size[2]/2.0])
-        self.scene_manage(wall_id, wall_size, [-0.405, 0.0, table2_ground_size[2] + table2_size[2] + wall_size[2]/2.0])
+        '''
+        self.scene_manage(table2_ground_id, table2_ground_size, [ 0.0, 0.36, table2_ground_size[2]/2.0])
+        self.scene_manage(box2_id, box2_size, [-0.12, -0.63, table_ground + table_size[2] + box2_size[2]/2.0])
+        self.scene_manage(table_id, table_size, [0.0, -0.7, table_ground + table_size[2]/2.0])
+        self.scene_manage(table2_id, table2_size, [0.0, 0.325, table2_ground_size[2] + table2_size[2]/2.0])
+        self.scene_manage(wall_id, wall_size, [0.0, 0.405, table2_ground_size[2] + table2_size[2] + wall_size[2]/2.0])
         self.scene_manage(ground_id, ground_size, [0.0, 0.0, -ground_size[2]/2.0])
-        self.scene_manage(side_id, side_size, [0.605, 0.0, side_size[2]/2.0])
-
+        self.scene_manage(side_id, side_size, [0.0, -0.605, side_size[2]/2.0])
+        '''
+        self.scene_manage(ground_id, ground_size, [0.0, 0.0, -ground_size[2]/2.0])
         target_size = [goal.object_size.x, goal.object_size.y, goal.object_size.z]
         target_position = [goal.object_pose.pose.position.x, goal.object_pose.pose.position.y, goal.object_pose.pose.position.z]
         self.scene_manage(target_id, target_size, target_position)
@@ -113,26 +116,27 @@ class PPServer(object):
         self.setColor(side_id, 0.8, 0.0, 0.0, 1.0)
         self.sendColors()
 
-        arm.set_support_surface_name(table_id) # avoid collision detection
+        arm.set_support_surface_name(ground_id) # avoid collision detection
 
         # setting placing position
         place_pose = PoseStamped()
         place_pose.header.frame_id = REFERENCE_FRAME
         place_orientation = Quaternion()
-        place_orientation = quaternion_from_euler(0.0, 0.0, -3.14)
-        self.setPose(place_pose, [-0.24, -0.22, table2_ground_size[2] + table2_size[2] + target_size[2]/2.0], list(place_orientation))
+        place_orientation = quaternion_from_euler(0.0, 0.0, 0.0)
+    #    self.setPose(place_pose, [-0.22, 0.24, table2_ground_size[2] + table2_size[2] + target_size[2]/2.0], list(place_orientation))
+        self.setPose(place_pose, [0.0, -0.5, 0.25 + target_size[2]/2.0])
         # setting grasping position 
         grasp_pose = goal.object_pose
         grasp_init_orientation = Quaternion()
-        grasp_init_orientation = quaternion_from_euler(0.0, 1.57, 0.0)        
+        grasp_init_orientation = quaternion_from_euler(1.57, -1.57, 0.0)  
         grasp_pose.pose.orientation.x = grasp_init_orientation[0]
         grasp_pose.pose.orientation.y = grasp_init_orientation[1]
         grasp_pose.pose.orientation.z = grasp_init_orientation[2]
         grasp_pose.pose.orientation.w = grasp_init_orientation[3]
-        grasp_pose.pose.position.x -= 0.02
+        grasp_pose.pose.position.y += 0.02
         rospy.loginfo('quaterion: '+ str(grasp_pose.pose.orientation))
         # generate grasp postures
-        grasps = self.make_grasps(grasp_pose, [table_id], [0.05, 0.07, [1.0, 0.0, 0.0]], [0.15, 0.20, [-1.0, 0.0, 0.0]])
+        grasps = self.make_grasps(grasp_pose, [table_id], [0.05, 0.07, [0.0, -1.0, 0.0]], [0.1, 0.15, [0.0, 1.0, 1.0]], 1)
 
         result = None
         n_attempts = 0
@@ -143,12 +147,12 @@ class PPServer(object):
             rospy.loginfo('Pick attempt:' + str(n_attempts))
             rospy.sleep(0.2)
 
-        arm.set_support_surface_name(table2_id)
+        arm.set_support_surface_name(ground_id)
         # generate place action
         if result == MoveItErrorCodes.SUCCESS:
             result = None
             n_attempts = 0
-            places = self.make_places(place_pose, [table2_id], [0.05, 0.07, [-1.0, 0.0, 0.0]], [0.1, 0.15, [1.0, 0.0, 0.0]])
+            places = self.make_places(place_pose, [table2_id], [0.05, 0.07, [0.0, -1.0, -1.0]], [0.1, 0.15, [0.0, 1.0, 1.0]])
         # execute place action
         while result != MoveItErrorCodes.SUCCESS and n_attempts < self.max_place_attempts:
             for place in places:
@@ -163,7 +167,9 @@ class PPServer(object):
         if MoveItErrorCodes.SUCCESS:
             arm.set_named_target('Home')
             arm.go()
-            self._result.arm_pose = arm.get_current_pose()
+            #rospy.Subscriber('/j2s7s300_driver/out/tool_pose', PoseStamped, callback=self.cb)
+            #self._result.arm_pose = arm.get_current_pose()
+            self._result.arm_pose = rospy.wait_for_message('/j2s7s300_driver/out/tool_pose', PoseStamped)
             self._server.set_succeeded(self._result)
 
         rospy.sleep(2)
@@ -247,7 +253,7 @@ class PPServer(object):
     @return: 
         grasp postures
     '''
-    def make_grasps(self, initial_pose_stamped, allowed_touch_objects, pre, post):
+    def make_grasps(self, initial_pose_stamped, allowed_touch_objects, pre, post, set_rpy = 0):
         g = Grasp()
         g.pre_grasp_posture = self.make_gripper_posture(GRIPPER_OPEN)
         g.grasp_posture = self.make_gripper_posture(GRIPPER_CLOSED)
@@ -255,9 +261,9 @@ class PPServer(object):
         g.post_grasp_retreat = self.make_gripper_translation(post[0], post[1], post[2])
 
         g.grasp_pose = initial_pose_stamped
-        roll_vals = [0, 0.1, -0.1, 0.15, -0.15, 0.25, -0.25]
-        yaw_vals = [0]
-        pitch_vals = [1.57]
+        roll_vals = [1.57]
+        yaw_vals = [0, 0.2, -0.2, 0.4, -0.4, 0.6, -0.6]
+        pitch_vals = [-1.57, -1.47, -1.67, -1.37, -1.77]
         z_vals =[0]
 
         grasps = []
@@ -266,11 +272,12 @@ class PPServer(object):
             for p in pitch_vals:
                 for z in z_vals:
                     for r in roll_vals:
-                        q = quaternion_from_euler(r, p, y)
-                        g.grasp_pose.pose.orientation.x = q[0]
-                        g.grasp_pose.pose.orientation.y = q[1]
-                        g.grasp_pose.pose.orientation.z = q[2]
-                        g.grasp_pose.pose.orientation.w = q[3]
+                        if set_rpy:
+                            q = quaternion_from_euler(r, p, y)
+                            g.grasp_pose.pose.orientation.x = q[0]
+                            g.grasp_pose.pose.orientation.y = q[1]
+                            g.grasp_pose.pose.orientation.z = q[2]
+                            g.grasp_pose.pose.orientation.w = q[3]
 
                         g.grasp_pose.pose.position.z = initial_pose_stamped.pose.position.z + z
 

@@ -1,5 +1,6 @@
 <launch>
-    <include file="$(find j2s7s300_moveit_config)/launch/demo.launch"/>
+    <arg name="file_name" default="j2s7s300_demo"/>
+    <include file="$(find j2s7s300_moveit_config)/launch/$(arg file_name).launch"/>
 
     <arg name="control_client" default="pick_place_client.py"/>
     <arg name="control_server" default="pick_place_server.py"/>

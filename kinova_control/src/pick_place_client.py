@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 '''
 @Description: A node for arm pick and place action client
 @Author: Binghui Li
@@ -6,7 +7,6 @@
 @LastEditors: Binghui Li
 '''
 
-#! /usr/bin/env python
 
 from __future__ import print_function
 import rospy, sys
