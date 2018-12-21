@@ -1,8 +1,6 @@
 <launch>
-    <include file="$(find j2s7s300_moveit_config)/launch/j2s7s300_demo.launch"/>
+    <arg name="test" default="test.py"/>
 
-    <arg name="control_client" default="moveit_control.py"/>
-
-    <node name="moveit_control" pkg="kinova_control" type="$(arg control_client)" respawn="false" output="screen">
+    <node name="test_node" pkg="kinova_control" type="$(arg test)" respawn="false" output="screen">
     </node>
 </launch>

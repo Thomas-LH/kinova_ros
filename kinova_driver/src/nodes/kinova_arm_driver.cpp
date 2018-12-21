@@ -40,7 +40,8 @@ int main(int argc, char **argv)
         ROS_INFO("kinova_robotName is %s.", kinova_robotName.c_str());
     }
 
-
+    SensorsInfo sensors; // struct defined in KinovaTypes.h
+    //auto pub = nh.advertise<kinova_msgs::SensorsInfo>("/SensorsInfo", 3);
     while (ros::ok())
     {
         try
@@ -51,6 +52,12 @@ int main(int argc, char **argv)
             kinova::KinovaAnglesActionServer angles_server(comm, nh);
             kinova::KinovaFingersActionServer fingers_server(comm, nh);
             kinova::JointTrajectoryController joint_trajectory_controller(comm, nh);
+
+            //kinova_msgs::SensorsInfo sensors_info; // msg defined in kinova_msgs
+            //comm.getSensorsInfo(&sensors);
+            // sensors = sensors
+            //pub.publish(sensors_info);
+
             ros::spin();
         }
         catch(const std::exception& e)

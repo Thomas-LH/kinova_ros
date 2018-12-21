@@ -103,7 +103,9 @@ class PickPlaceServer2(object):
         rospy.sleep(1)
 
         pose_init = PoseStamped()
-        pose_init = self.arm.get_current_pose(end_effector_link)
+        #pose_init = self.arm.get_current_pose(end_effector_link)  this function can't work for some reason, so we subscribe to specific topic to get what we want
+        pose_init = rospy.wait_for_message('/j2s7s300_driver/out/tool_pose', geometry_msgs.msg.PoseStamped)
+        pose_init.header.frame_id = REFERENCE_FRAME
         pose_init.pose.orientation = Quaternion(*quaternion_from_euler(grasp_rpy[0], grasp_rpy[1], grasp_rpy[2]))
         self.arm.set_pose_target(pose_init)
         self.arm.go()
@@ -114,7 +116,7 @@ class PickPlaceServer2(object):
             self.arm.set_support_surface_name(table_id)
             result = self.place(target_id, place_pose, 0.05, [0.15, [-1.0, -1.0, 0.0]])
         if result:
-            self._result.arm_pose = self.arm.get_current_pose()
+            self._result.arm_pose = rospy.wait_for_message('/j2s7s300_driver/out/tool_pose', geometry_msgs.msg.PoseStamped)
             self._server.set_succeeded(self._result)
         
         rospy.sleep(2)
@@ -324,7 +326,9 @@ class PickPlaceServer2(object):
         position_check = False
         orientation_check = False
         current_pos = Pose()
-        current_pos = self.arm.get_current_pose().pose
+        #current_pos = self.arm.get_current_pose().pose
+        current_pose = rospy.wait_for_message('/j2s7s300_driver/out/tool_pose', geometry_msgs.msg.PoseStamped)
+        current_pos = deepcopy(current_pose.pose)
         if pow(current_pos.position.x - dest_pos.position.x, 2) + pow(current_pos.position.y - dest_pos.position.y, 2) + pow(current_pos.position.z - dest_pos.position.z, 2) < pow(limit['dist'], 2):
             position_check = True
         dest_rpy = euler_from_quaternion([dest_pos.orientation.x, dest_pos.orientation.y, dest_pos.orientation.z, dest_pos.orientation.w])
@@ -338,9 +342,9 @@ class PickPlaceServer2(object):
             return False
     
     def get_path(self, dest_position, step, constraints=None):
-        print "current pose: %s" % self.arm.get_current_pose().pose
+        current_pose = rospy.wait_for_message('/j2s7s300_driver/out/tool_pose', geometry_msgs.msg.PoseStamped)
         waypoints = []
-        waypoints.append(self.arm.get_current_pose().pose)
+        waypoints.append(current_pose.pose)
         wpose = Pose()
         wpose = dest_position
         waypoints.append(deepcopy(wpose))
@@ -351,6 +355,12 @@ class PickPlaceServer2(object):
             (plan, fraction) = self.arm.compute_cartesian_path(waypoints, step, 0.0, path_constraints = constraints)
         
         return (plan, fraction)
+
+    def str2val(self, message, vtype):
+        v_dict = dict()
+        
+        if vtype == 'PoseStamped':
+
 
     def safety_check(self):
         pass

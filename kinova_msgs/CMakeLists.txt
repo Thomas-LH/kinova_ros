@@ -23,6 +23,7 @@ add_message_files(
   PoseVelocity.msg
   CartesianForce.msg
   StateAndObject.msg
+  SensorsInfo.msg
 )
 
 add_service_files(
