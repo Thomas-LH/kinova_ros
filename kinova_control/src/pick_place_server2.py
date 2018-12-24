@@ -15,6 +15,7 @@ from copy import deepcopy
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
+
 GROUP_NAME_ARM = 'arm'
 GROUP_NAME_GRIPPER = 'gripper'
 GRIPPER_CLOSED = [6400.0, 6400.0, 6400.0]
@@ -47,30 +48,41 @@ class PickPlaceServer2(object):
         self.arm.allow_replanning(True)
         self.arm.set_planning_time(10)
         # setting object id
-        table_id = 'table'
-        side_id = 'side'
-        table2_id = 'table2'
-        table2_ground_id = 'table2_ground'
+        table_front_id = 'table_front'
+        tf_side_id = 'front_table_side'
+        table_back_id = 'table_back'
+        tb_side_id = 'back_table_side'
         box2_id = 'box2'
         target_id = 'target'
-        wall_id = 'wall'
+        protectzone_vid = 'pzv'
+        protectzone_fid = 'pzf'
+        protectzone_sid = 'pzs'
         ground_id = 'ground'
+        board_behind_arm_id = 'bba'
         rospy.sleep(1)
         # setting object size
-        table_ground = 0.55
-        table_size = [0.2, 0.7, 0.01]
-        table2_size = [0.25, 0.6, 0.01]
-        table2_ground_size = [0.02, 0.9, 0.6]
-        wall_size = [0.01, 0.9, 0.6]
-        ground_size = [3, 3, 0.01]
-        side_size = [0.01, 0.7, table_ground]
+        x_offset = 0.28
+        table_front_ground = 0.40
+        table_front_size = [1.5, 0.6, 0.02]
+        table_back_size = [0.5, 0.25, 0.02] #table on the robot
+        tb_side_size = [0.5, 0.02, 0.6]
+        pzv_size = [0.7, 0.02, 0.5] #board before user's face
+        pzf_size = [0.5, 0.355, 0.02] #board above user's foot
+        pzs_size = [0.02, 0.5, 1.12] #board on the right side
+        ground_size = [3, 3, 0.02]
+        tf_side_size = [1.5, 0.02, table_front_ground]
+        bba_size = [0.2, 0.02, tb_side_size[2] + table_back_size[2]]
         # setting object pose and add to the world
-        self.scene_manage(table2_ground_id, table2_ground_size, [-0.36, 0.0, table2_ground_size[2]/2.0])
-        self.scene_manage(table_id, table_size, [0.7, 0.0, table_ground + table_size[2]/2.0])
-        self.scene_manage(table2_id, table2_size, [-0.325, 0.0, table2_ground_size[2] + table2_size[2]/2.0])
-        self.scene_manage(wall_id, wall_size, [-0.405, 0.0, table2_ground_size[2] + table2_size[2] + wall_size[2]/2.0])
-        self.scene_manage(ground_id, ground_size, [0.0, 0.0, -ground_size[2]/2.0])
-        self.scene_manage(side_id, side_size, [0.605, 0.0, side_size[2]/2.0])
+        roll_offset = Quaternion(*quaternion_from_euler(0.565, 0, 0))
+        self.scene_manage(tb_side_id, tb_side_size, [x_offset + 0.1, 0.0, tb_side_size[2]/2.0])
+        self.scene_manage(table_front_id, table_front_size, [0.0, -0.75, table_front_ground + table_front_size[2]/2.0])
+        self.scene_manage(table_back_id, table_back_size, [x_offset + 0.1, table_back_size[1]/2.0, tb_side_size[2] + table_back_size[2]/2.0])
+        self.scene_manage(protectzone_vid, pzv_size, [x_offset, 0.20, tb_side_size[2] + table_back_size[2] + pzv_size[2]/2.0])
+        self.scene_manage(ground_id, ground_size, [0.0, 0.0, -ground_size[2]/2.0 - 0.2])
+        self.scene_manage(tf_side_id, tf_side_size, [x_offset, -0.45, tf_side_size[2]/2.0])
+        self.scene_manage(protectzone_fid, pzf_size, [x_offset + 0.1, -0.15, 0.205], roll_offset)
+        self.scene_manage(board_behind_arm_id, bba_size, [0.03, 0.20, bba_size[2]/2.0])
+        self.scene_manage(protectzone_sid, pzs_size, [-0.06, 0.46, pzs_size[2]/2.0])
 
         z_offset = 0.01
         target_size = [goal.object_size.x, goal.object_size.y, goal.object_size.z]
@@ -78,24 +90,27 @@ class PickPlaceServer2(object):
         self.scene_manage(target_id, target_size, target_position)
 
         # setting object color
-        self.set_color(table_id, 0.8, 0.0, 0.0, 1.0)
-        self.set_color(table2_id, 0.8, 0.0, 0.0)
-        self.set_color(table2_ground_id, 0.9, 0.9, 0.9)
+        self.set_color(table_front_id, 0.8, 0.0, 0.0, 1.0)
+        self.set_color(table_back_id, 0.9, 0.9, 0.9)
+        self.set_color(tb_side_id, 0.9, 0.9, 0.9)
         self.set_color(target_id, 0.5, 0.4, 1.0)
-        self.set_color(wall_id, 0.9, 0.9, 0.9)
+        self.set_color(protectzone_vid, 0.9, 0.9, 0.9)
         self.set_color(ground_id, 0.3, 0.3, 0.3, 1.0)
-        self.set_color(side_id, 0.8, 0.0, 0.0, 1.0)
+        self.set_color(tf_side_id, 0.8, 0.0, 0.0, 1.0)
+        self.set_color(protectzone_fid, 0.9, 0.9, 0.9)
+        self.set_color(board_behind_arm_id, 0.9, 0.9, 0.9)
+        self.set_color(protectzone_sid, 0.9, 0.9, 0.9)
         self.send_color()
 
-        grasp_rpy = [-3.14, -1.57, 0.0]
+        grasp_rpy = [1.57, -1.57, 0.0]
         grasp_pose = deepcopy(goal.object_pose)
         grasp_pose.pose.orientation = Quaternion(*quaternion_from_euler(grasp_rpy[0], grasp_rpy[1], grasp_rpy[2]))
-        grasp_pose.pose.position.x -= 0.02
+        grasp_pose.pose.position.y += 0.01
 
         # setting placing position
         place_pose = PoseStamped()
         place_pose.header.frame_id = REFERENCE_FRAME
-        self.set_pose(place_pose, [0.63, 0.22, table_ground + table_size[2] + target_size[2]/2.0])
+        self.set_pose(place_pose, [-0.2, -0.5, table_front_ground + table_front_size[2] + target_size[2]/2.0])
         place_pose.pose.orientation = grasp_pose.pose.orientation
 
         self.arm.set_named_target("Home")
@@ -103,20 +118,23 @@ class PickPlaceServer2(object):
         rospy.sleep(1)
 
         pose_init = PoseStamped()
-        #pose_init = self.arm.get_current_pose(end_effector_link)  this function can't work for some reason, so we subscribe to specific topic to get what we want
-        pose_init = rospy.wait_for_message('/j2s7s300_driver/out/tool_pose', geometry_msgs.msg.PoseStamped)
+        pose_init = self.arm.get_current_pose(end_effector_link)  #this function can't work for some reason, so we subscribe to specific topic to get what we want
+        #pose_init = rospy.wait_for_message('/j2s7s300_driver/out/tool_pose', PoseStamped)
         pose_init.header.frame_id = REFERENCE_FRAME
         pose_init.pose.orientation = Quaternion(*quaternion_from_euler(grasp_rpy[0], grasp_rpy[1], grasp_rpy[2]))
+        pose_init.pose.position.x -= 0.5
+        pose_init.pose.position.y += 0.1 # 0.05 the the path is better
         self.arm.set_pose_target(pose_init)
         self.arm.go()
         rospy.sleep(1)
 
-        result = self.pick(target_id, grasp_pose, 0.05, [0.15, [-1.0, -1.0, 0.0]])
+        result = self.pick(target_id, grasp_pose, 0.05, [0.15, [-1.0, 1.0, 0.0]])
         if result:
-            self.arm.set_support_surface_name(table_id)
-            result = self.place(target_id, place_pose, 0.05, [0.15, [-1.0, -1.0, 0.0]])
+            self.arm.set_support_surface_name(table_front_id)
+            result = self.place(target_id, place_pose, 0.05, [0.15, [-1.0, 1.0, 0.0]])
         if result:
-            self._result.arm_pose = rospy.wait_for_message('/j2s7s300_driver/out/tool_pose', geometry_msgs.msg.PoseStamped)
+            #self._result.arm_pose = rospy.wait_for_message('/j2s7s300_driver/out/tool_pose', PoseStamped)
+            self._result.arm_pose = self.arm.get_current_pose()
             self._server.set_succeeded(self._result)
         
         rospy.sleep(2)
@@ -127,11 +145,11 @@ class PickPlaceServer2(object):
         
 
 
-    def scene_manage(self, obj_id, obj_size, obj_pose):
+    def scene_manage(self, obj_id, obj_size, obj_pose, obj_ori=None):
         self._scene.remove_world_object(obj_id)
         obj_pos = PoseStamped()
         obj_pos.header.frame_id = REFERENCE_FRAME
-        self.set_pose(obj_pos, obj_pose)    
+        self.set_pose(obj_pos, obj_pose, orientation=obj_ori)    
         self._scene.add_box(obj_id, obj_pos, obj_size)
 
     def set_pose(self, pose_stamped_object, position, orientation=None):
@@ -144,10 +162,7 @@ class PickPlaceServer2(object):
         if orientation is None:
             pose_stamped_object.pose.orientation.w = 1.0
         else:
-            pose_stamped_object.pose.orientation.x = orientation[0]
-            pose_stamped_object.pose.orientation.y = orientation[1]
-            pose_stamped_object.pose.orientation.z = orientation[2]
-            pose_stamped_object.pose.orientation.w = orientation[3]
+            pose_stamped_object.pose.orientation = orientation
     
     def set_color(self, name, r, g, b, a=0.9):
         color = ObjectColor()
@@ -185,7 +200,7 @@ class PickPlaceServer2(object):
         pre_grasp_posture = self.make_gripper_posture(GRIPPER_OPEN)
         grasp_posture = self.make_gripper_posture(GRIPPER_CLOSED)
 
-        limit = {'dist': 0.005, 'r': 0.15, 'p': 0.15, 'y': 0.15}   
+        limit = {'dist': 0.01, 'r': 0.15, 'p': 0.15, 'y': 0.15}   
         constraints = Constraints()
         oc = OrientationConstraint()
         oc.header.frame_id = REFERENCE_FRAME
@@ -197,12 +212,12 @@ class PickPlaceServer2(object):
         oc.orientation = grasp_position.pose.orientation
         constraints.orientation_constraints.append(deepcopy(oc))
         
-        reslut = False
+        result = False
         replan_times = 1
         replan_flag = True
         while replan_flag and replan_times <= 5:
             (pre_grasp_path, fraction) = self.get_path(grasp_position.pose, 0.01, constraints=constraints)
-            if fraction == 1.0:
+            if fraction >= 0.92:
                 print "Pre_grasp_approach..."
                 self.arm.execute(pre_grasp_path)
                 result = self.check(grasp_position.pose, limit)
@@ -244,7 +259,7 @@ class PickPlaceServer2(object):
         return result
 
     def place(self, target_name, place_position, pre_place_distance, post_place_retreat):
-        limit = {'dist': 0.005, 'r': 0.10, 'p': 0.10, 'y': 0.10}
+        limit = {'dist': 0.01, 'r': 0.10, 'p': 0.10, 'y': 0.10}
         constraints = Constraints()
         oc = OrientationConstraint()
         oc.header.frame_id = REFERENCE_FRAME
@@ -252,7 +267,7 @@ class PickPlaceServer2(object):
         oc.absolute_x_axis_tolerance = limit['r'] # radian
         oc.absolute_y_axis_tolerance = limit['p']
         oc.absolute_z_axis_tolerance = limit['y']
-        oc.weight = 1.0
+        oc.weight = 0.85
         oc.orientation = place_position.pose.orientation
         constraints.orientation_constraints.append(deepcopy(oc))
 
@@ -261,7 +276,7 @@ class PickPlaceServer2(object):
         replan_flag = True
         while replan_flag and replan_times <= 5:
             (place_path, fraction) = self.get_path(place_position.pose, 0.01, constraints=constraints)
-            if fraction == 1.0:
+            if fraction >= 0.95:
                 print "Pre_place_approach..."
                 self.arm.execute(place_path)
                 result = self.check(place_position.pose, limit)
@@ -326,9 +341,13 @@ class PickPlaceServer2(object):
         position_check = False
         orientation_check = False
         current_pos = Pose()
-        #current_pos = self.arm.get_current_pose().pose
-        current_pose = rospy.wait_for_message('/j2s7s300_driver/out/tool_pose', geometry_msgs.msg.PoseStamped)
-        current_pos = deepcopy(current_pose.pose)
+        current_pos = self.arm.get_current_pose().pose
+        rospy.logwarn("current_pose: ")
+        print current_pos
+        rospy.logwarn("dest_pose: ")
+        print dest_pos
+        #current_pose = rospy.wait_for_message('/j2s7s300_driver/out/tool_pose', PoseStamped)
+        #current_pos = deepcopy(current_pose.pose)
         if pow(current_pos.position.x - dest_pos.position.x, 2) + pow(current_pos.position.y - dest_pos.position.y, 2) + pow(current_pos.position.z - dest_pos.position.z, 2) < pow(limit['dist'], 2):
             position_check = True
         dest_rpy = euler_from_quaternion([dest_pos.orientation.x, dest_pos.orientation.y, dest_pos.orientation.z, dest_pos.orientation.w])
@@ -339,10 +358,16 @@ class PickPlaceServer2(object):
         if position_check and orientation_check:
             return True
         else:
+            rospy.logerr("Limition is not satisfied!\n")
+            rospy.logerr("position_check: ")
+            print position_check
+            rospy.logerr("orientation_check: ")
+            print orientation_check
             return False
     
     def get_path(self, dest_position, step, constraints=None):
-        current_pose = rospy.wait_for_message('/j2s7s300_driver/out/tool_pose', geometry_msgs.msg.PoseStamped)
+        #current_pose = rospy.wait_for_message('/j2s7s300_driver/out/tool_pose', PoseStamped)
+        current_pose = self.arm.get_current_pose()
         waypoints = []
         waypoints.append(current_pose.pose)
         wpose = Pose()
@@ -357,10 +382,7 @@ class PickPlaceServer2(object):
         return (plan, fraction)
 
     def str2val(self, message, vtype):
-        v_dict = dict()
-        
-        if vtype == 'PoseStamped':
-
+        pass
 
     def safety_check(self):
         pass
