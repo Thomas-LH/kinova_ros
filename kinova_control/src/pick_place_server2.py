@@ -32,7 +32,7 @@ class PickPlaceServer2(object):
         moveit_commander.roscpp_initialize(sys.argv)
         rospy.init_node('PP_server2_node')
         self._scene = moveit_commander.PlanningSceneInterface('world')
-        self._scene_pub = rospy.Publisher('planning_scene', PlanningScene)
+        self._scene_pub = rospy.Publisher('planning_scene', PlanningScene, queue_size=2)
         self.colors = dict()
         self.max_pick_attempts = 5
         self.max_place_attempts = 5
@@ -41,12 +41,30 @@ class PickPlaceServer2(object):
         self._server = actionlib.SimpleActionServer("PickAndPlace", kinova_msgs.msg.PoseAndSizeAction, execute_cb=self.pick_and_place, auto_start=False)
         self._server.start() # start action server
 
-    def pick_and_place(self, goal):
+        # initialize arm and gripper groups
         self.arm = moveit_commander.MoveGroupCommander('arm')
         self.gripper = moveit_commander.MoveGroupCommander('gripper')
         end_effector_link = self.arm.get_end_effector_link() # get end effector link name
         self.arm.allow_replanning(True)
         self.arm.set_planning_time(10)
+
+        self.arm.set_named_target("Home")
+        self.arm.go()
+        rospy.sleep(1)
+
+        pose_init = PoseStamped()
+        pose_init = self.arm.get_current_pose(end_effector_link)  #this function can't work for some reason, so we subscribe to specific topic to get what we want
+        #pose_init = rospy.wait_for_message('/j2s7s300_driver/out/tool_pose', PoseStamped)
+        pose_init.header.frame_id = REFERENCE_FRAME
+        pose_init.pose.orientation = Quaternion(*quaternion_from_euler(1.57, -1.57, 0))
+        pose_init.pose.position.x -= 0.5
+        pose_init.pose.position.y -= 0.05 # -0.05 the the path is better
+        self.arm.set_pose_target(pose_init)
+        self.arm.go()
+        rospy.sleep(1)
+        self.arm.remember_joint_values('start_pose')
+
+    def pick_and_place(self, goal):
         # setting object id
         table_front_id = 'table_front'
         tf_side_id = 'front_table_side'
@@ -113,35 +131,31 @@ class PickPlaceServer2(object):
         self.set_pose(place_pose, [-0.2, -0.5, table_front_ground + table_front_size[2] + target_size[2]/2.0])
         place_pose.pose.orientation = grasp_pose.pose.orientation
 
-        self.arm.set_named_target("Home")
-        self.arm.go()
-        rospy.sleep(1)
-
-        pose_init = PoseStamped()
-        pose_init = self.arm.get_current_pose(end_effector_link)  #this function can't work for some reason, so we subscribe to specific topic to get what we want
-        #pose_init = rospy.wait_for_message('/j2s7s300_driver/out/tool_pose', PoseStamped)
-        pose_init.header.frame_id = REFERENCE_FRAME
-        pose_init.pose.orientation = Quaternion(*quaternion_from_euler(grasp_rpy[0], grasp_rpy[1], grasp_rpy[2]))
-        pose_init.pose.position.x -= 0.5
-        pose_init.pose.position.y += 0.1 # 0.05 the the path is better
-        self.arm.set_pose_target(pose_init)
-        self.arm.go()
-        rospy.sleep(1)
-
-        result = self.pick(target_id, grasp_pose, 0.05, [0.15, [-1.0, 1.0, 0.0]])
-        if result:
-            self.arm.set_support_surface_name(table_front_id)
-            result = self.place(target_id, place_pose, 0.05, [0.15, [-1.0, 1.0, 0.0]])
-        if result:
-            #self._result.arm_pose = rospy.wait_for_message('/j2s7s300_driver/out/tool_pose', PoseStamped)
-            self._result.arm_pose = self.arm.get_current_pose()
-            self._server.set_succeeded(self._result)
+        replan_times = 1
+        replan_state = True
+        while replan_times <= 3 and replan_state:
+            rospy.loginfo("Attempts %d of 3 ", replan_times)
+            result = self.pick(target_id, grasp_pose, 0.05, [0.15, [0.0, 1.0, 0.0]])
+            if result:
+                #self.arm.set_support_surface_name(table_front_id)
+                result = self.place(target_id, place_pose, 0.05, [0.15, [0.0, 1.0, 0.0]])
+            if result:
+                #self._result.arm_pose = rospy.wait_for_message('/j2s7s300_driver/out/tool_pose', PoseStamped)
+                replan_state = False
+                self._result.arm_pose = self.arm.get_current_pose()
+                self._server.set_succeeded(self._result)
+            else:
+                self.gripper.set_named_target("Open")
+                self.gripper.go()
         
-        rospy.sleep(2)
-        print "Return to Home posture..."
-        self.arm.set_named_target("Home")
-        self.arm.go()
+            rospy.sleep(1)
+            print "Return to start posture..."
+            self.arm.set_named_target('start_pose')
+            self.arm.go()
 
+        if replan_state:
+            rospy.logerr("Can't find a solution after 3 attempts!")
+            self._server.set_aborted()
         
 
 
@@ -214,14 +228,14 @@ class PickPlaceServer2(object):
         
         result = False
         replan_times = 1
-        replan_flag = True
-        while replan_flag and replan_times <= 5:
+        replan_state = True
+        while replan_state and replan_times <= 5:
             (pre_grasp_path, fraction) = self.get_path(grasp_position.pose, 0.01, constraints=constraints)
             if fraction >= 0.92:
                 print "Pre_grasp_approach..."
                 self.arm.execute(pre_grasp_path)
                 result = self.check(grasp_position.pose, limit)
-                replan_flag = False
+                replan_state = False
             replan_times += 1
         
         if result:
@@ -240,19 +254,19 @@ class PickPlaceServer2(object):
             
             print "post_grasp_position: %s\n" % post_grasp_position
             replan_times = 1
-            replan_flag = True
-            while replan_flag and replan_times <= 5:
+            replan_state = True
+            while replan_state and replan_times <= 5:
                 (retreat_path, fraction) = self.get_path(post_grasp_position, 0.005, constraints=constraints)
                 print "fraction: %s\n" % fraction
                 if fraction > 0.8:
                     print "Retreating..."
                     self.arm.execute(retreat_path)
                     result = self.check(post_grasp_position, limit)
-                    replan_flag = False
+                    replan_state = False
                 replan_times += 1
             
-        if replan_flag:
-            raise Exception("Can't find a solution after 5 attempts!")
+        if replan_state:
+            rospy.logwarn("Can't find a solution after 5 attempts!")
             
         self.arm.clear_path_constraints()
 
@@ -273,14 +287,14 @@ class PickPlaceServer2(object):
 
         result = False
         replan_times = 1
-        replan_flag = True
-        while replan_flag and replan_times <= 5:
+        replan_state = True
+        while replan_state and replan_times <= 5:
             (place_path, fraction) = self.get_path(place_position.pose, 0.01, constraints=constraints)
             if fraction >= 0.95:
                 print "Pre_place_approach..."
                 self.arm.execute(place_path)
                 result = self.check(place_position.pose, limit)
-                replan_flag = False
+                replan_state = False
             replan_times += 1
 
         if result:
@@ -292,18 +306,18 @@ class PickPlaceServer2(object):
             rospy.sleep(1)
 
             post_place_position = self.get_retreat_point(place_position.pose, post_place_retreat)
-            replan_flag = True
+            replan_state = True
             replan_times = 1
-            while replan_flag and replan_times <= 5:
+            while replan_state and replan_times <= 5:
                 (retreat_path, fraction) = self.get_path(post_place_position, 0.01, constraints=constraints)
                 if fraction > 0.8:
                     self.arm.execute(retreat_path)
                     result = self.check(post_place_position, limit)
-                    replan_flag = False
+                    replan_state = False
                 replan_times += 1
             
-        if replan_flag:
-            raise Exception("Can't find a solution after 5 attempts!")
+        if replan_state:
+            rospy.logwarn("Can't find a solution after 5 attempts!")
 
         self.arm.clear_path_constraints()
 

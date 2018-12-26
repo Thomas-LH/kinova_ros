@@ -3,8 +3,8 @@
 @Description: A node for arm pick and place action client
 @Author: Binghui Li
 @Date: 2018-11-01 18:08:55
-@LastEditTime: 2018-11-01 18:29:02
-@LastEditors: Binghui Li
+@LastEditTime: 2018-12-26 17:57:47
+@LastEditors: Please set LastEditors
 '''
 
 
@@ -15,6 +15,7 @@ import actionlib
 import std_msgs.msg
 import kinova_msgs.msg
 from geometry_msgs.msg import PoseStamped
+from actionlib_msgs.msg import GoalStatus
 
 
 '''
@@ -38,7 +39,7 @@ Callback for initializing a client to call service
 '''
 
 def pp_client(feedback):
-    if feedback.start:
+    if feedback.status == kinova_msgs.msg.StateAndObject.START:
         rospy.loginfo("calling service")
         client.wait_for_server() # wait for server to start
 
@@ -46,11 +47,17 @@ def pp_client(feedback):
         goal.object_pose = feedback.object_pose
         goal.object_size = feedback.object_size
         client.send_goal(goal)
-        if client.wait_for_result(rospy.Duration(120)): # wait for result in 2 mins
-            print("Pick and Place Action: Succeeded")
-            rospy.loginfo(client.get_result().arm_pose)
-        else:
-            rospy.logwarn("Arm Action Timeout!")
+        if client.wait_for_result(): # wait forever
+            state = client.get_state()
+            if state == GoalStatus.SUCCEEDED:
+                print("Pick and Place Action: Succeeded")
+                #rospy.loginfo(client.get_result().arm_pose)
+            elif state == GoalStatus.ABORTED:
+                rospy.logwarn("Aborted!")
+                
+    if feedback.status == kinova_msgs.msg.StateAndObject.CANCEL:
+        client.cancel_all_goals()
+        rospy.logwarn("Goal Canceled")
 
 if __name__ == '__main__':
     try:
