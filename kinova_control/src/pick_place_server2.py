@@ -14,7 +14,8 @@ from moveit_msgs.msg import (Constraints, Grasp, GripperTranslation,
 from copy import deepcopy
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
-
+from actionlib_msgs.msg import GoalStatus
+from enum import Enum
 
 GROUP_NAME_ARM = 'arm'
 GROUP_NAME_GRIPPER = 'gripper'
@@ -26,6 +27,13 @@ GRIPPER_EFFORT = [1.0, 1.0, 1.0]
 GRIPPER_FRAME = 'j2s7s300_end_effector'
 REFERENCE_FRAME  = 'world'
 
+# state definition
+class STATE(Enum):
+    STOP = 0
+    START = 1
+
+
+
 class PickPlaceServer2(object):
     _result = kinova_msgs.msg.PoseAndSizeResult()
     def __init__(self):
@@ -33,6 +41,7 @@ class PickPlaceServer2(object):
         rospy.init_node('PP_server2_node')
         self._scene = moveit_commander.PlanningSceneInterface('world')
         self._scene_pub = rospy.Publisher('planning_scene', PlanningScene, queue_size=2)
+        self.state = STATE.START
         self.colors = dict()
         self.max_pick_attempts = 5
         self.max_place_attempts = 5
@@ -135,29 +144,38 @@ class PickPlaceServer2(object):
         replan_state = True
         while replan_times <= 3 and replan_state:
             rospy.loginfo("Attempts %d of 3 ", replan_times)
-            result = self.pick(target_id, grasp_pose, 0.05, [0.15, [0.0, 1.0, 0.0]])
+            result = self.pick(target_id, grasp_pose, 0.05, [0.15, [-1.0, 1.0, 0.0]])
             if result:
                 #self.arm.set_support_surface_name(table_front_id)
-                result = self.place(target_id, place_pose, 0.05, [0.15, [0.0, 1.0, 0.0]])
+                result = self.place(target_id, place_pose, 0.05, [0.15, [-1.0, 1.0, 0.0]])
             if result:
                 #self._result.arm_pose = rospy.wait_for_message('/j2s7s300_driver/out/tool_pose', PoseStamped)
                 replan_state = False
                 self._result.arm_pose = self.arm.get_current_pose()
                 self._server.set_succeeded(self._result)
             else:
+                if self.state is STATE.STOP:
+                    replan_state = False
+                    rospy.logwarn('Canceled by user!')
+                    break
                 self.gripper.set_named_target("Open")
                 self.gripper.go()
-        
-            rospy.sleep(1)
-            print "Return to start posture..."
-            self.arm.set_named_target('start_pose')
-            self.arm.go()
+
+            self.back_to_init_pose()
+            
 
         if replan_state:
             rospy.logerr("Can't find a solution after 3 attempts!")
             self._server.set_aborted()
         
-
+    def back_to_init_pose(self, state=0):
+        rospy.sleep(0.5)
+        print "Return to start posture..."
+        if state:
+            self.gripper.set_named_target("Open")
+            self.gripper.go()
+        self.arm.set_named_target('start_pose')
+        self.arm.go()
 
     def scene_manage(self, obj_id, obj_size, obj_pose, obj_ori=None):
         self._scene.remove_world_object(obj_id)
@@ -233,11 +251,13 @@ class PickPlaceServer2(object):
             (pre_grasp_path, fraction) = self.get_path(grasp_position.pose, 0.01, constraints=constraints)
             if fraction >= 0.92:
                 print "Pre_grasp_approach..."
+                if self._server.current_goal.get_goal_status().status == GoalStatus.PREEMPTING:
+                    self.state = STATE.STOP
+                    return False
                 self.arm.execute(pre_grasp_path)
                 result = self.check(grasp_position.pose, limit)
                 replan_state = False
             replan_times += 1
-        
         if result:
             result = False
             if self.arm.attach_object(target_name, self.arm.get_end_effector_link(), ["j2s7s300_end_effector", "j2s7s300_link_finger_1", 
@@ -248,6 +268,11 @@ class PickPlaceServer2(object):
                 raise Exception("Can't send attach request!")
             print "Grasping..."
             self.gripper.set_named_target("Close")
+            if self._server.current_goal.get_goal_status().status == GoalStatus.PREEMPTING:
+                self.arm.detach_object(target_name)
+                self.back_to_init_pose()
+                self.state = STATE.STOP
+                return False
             self.gripper.go()
             rospy.sleep(1)
             post_grasp_position = self.get_retreat_point(grasp_position.pose, post_grasp_retreat)
@@ -260,6 +285,11 @@ class PickPlaceServer2(object):
                 print "fraction: %s\n" % fraction
                 if fraction > 0.8:
                     print "Retreating..."
+                    if self._server.current_goal.get_goal_status().status == GoalStatus.PREEMPTING:
+                        self.arm.detach_object(target_name)
+                        self.back_to_init_pose(state=1)
+                        self.state = STATE.STOP
+                        return False
                     self.arm.execute(retreat_path)
                     result = self.check(post_grasp_position, limit)
                     replan_state = False
@@ -315,7 +345,10 @@ class PickPlaceServer2(object):
                     result = self.check(post_place_position, limit)
                     replan_state = False
                 replan_times += 1
-            
+
+        if self._server.current_goal.get_goal_status().status == GoalStatus.PREEMPTING:
+            rospy.logwarn("Can't cancel task after place action start!")    
+
         if replan_state:
             rospy.logwarn("Can't find a solution after 5 attempts!")
 
@@ -394,9 +427,6 @@ class PickPlaceServer2(object):
             (plan, fraction) = self.arm.compute_cartesian_path(waypoints, step, 0.0, path_constraints = constraints)
         
         return (plan, fraction)
-
-    def str2val(self, message, vtype):
-        pass
 
     def safety_check(self):
         pass

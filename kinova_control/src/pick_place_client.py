@@ -3,7 +3,7 @@
 @Description: A node for arm pick and place action client
 @Author: Binghui Li
 @Date: 2018-11-01 18:08:55
-@LastEditTime: 2018-12-26 17:57:47
+@LastEditTime: 2018-12-28 16:15:42
 @LastEditors: Please set LastEditors
 '''
 
@@ -57,7 +57,7 @@ def pp_client(feedback):
                 
     if feedback.status == kinova_msgs.msg.StateAndObject.CANCEL:
         client.cancel_all_goals()
-        rospy.logwarn("Goal Canceled")
+        rospy.logwarn("Send cancel request")
 
 if __name__ == '__main__':
     try:
