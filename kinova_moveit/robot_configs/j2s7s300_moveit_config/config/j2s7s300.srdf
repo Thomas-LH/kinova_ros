@@ -54,6 +54,16 @@
         <joint name="j2s7s300_joint_finger_2" value="1.2" />
         <joint name="j2s7s300_joint_finger_3" value="1.2" />
     </group_state>
+    <group_state name="Close1" group="gripper">
+        <joint name="j2s7s300_joint_finger_1" value="0.6" />
+        <joint name="j2s7s300_joint_finger_2" value="0.6" />
+        <joint name="j2s7s300_joint_finger_3" value="0.6" />
+    </group_state>
+    <group_state name="Close2" group="gripper">
+        <joint name="j2s7s300_joint_finger_1" value="0.9" />
+        <joint name="j2s7s300_joint_finger_2" value="0.9" />
+        <joint name="j2s7s300_joint_finger_3" value="0.9" />
+    </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
     <end_effector name="end_effector" parent_link="j2s7s300_end_effector" group="gripper" />
     <!--VIRTUAL JOINT: Purpose: this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->

@@ -1,9 +1,10 @@
 # Goal
-geometry_msgs/PoseStamped object_pose
+geometry_msgs/PointStamped object_pose
 geometry_msgs/Point object_size
+string object_class
 ---
 # Result
-geometry_msgs/PoseStamped arm_pose
+geometry_msgs/PointStamped arm_pose
 ---
 # Feedback message
-geometry_msgs/PoseStamped arm_pose
+geometry_msgs/PointStamped arm_pose

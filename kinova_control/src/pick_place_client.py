@@ -7,14 +7,13 @@
 @LastEditors: Please set LastEditors
 '''
 
-
-from __future__ import print_function
 import rospy, sys
 import roslib
 import actionlib
 import std_msgs.msg
 import kinova_msgs.msg
-from geometry_msgs.msg import PoseStamped
+import iair_msgs.msg
+from geometry_msgs.msg import PoseStamped, Point
 from actionlib_msgs.msg import GoalStatus
 
 
@@ -39,6 +38,7 @@ Callback for initializing a client to call service
 '''
 
 def pp_client(feedback):
+    '''
     if feedback.status == kinova_msgs.msg.StateAndObject.START:
         rospy.loginfo("calling service")
         client.wait_for_server() # wait for server to start
@@ -58,12 +58,29 @@ def pp_client(feedback):
     if feedback.status == kinova_msgs.msg.StateAndObject.CANCEL:
         client.cancel_all_goals()
         rospy.logwarn("Send cancel request")
+    '''
+    client.wait_for_server()
+    goal = iair_msgs.msg.armGoal()
+    goal.target_object.object_id = 1
+    goal.target_object.object_class = 'bottle'
+    goal.target_object.object_point.header.frame_id = 'other'
+    goal.target_object.object_point.point = Point(0.0, -1.05, 0.52)
+    goal.target_object.object_size.header.frame_id = 'other'
+    goal.target_object.object_size.point = Point(0.02, 0.02, 0.20)
+    goal.target_object.class_conf = 0.9
+    client.send_goal(goal)
+    if client.wait_for_result():
+        rospy.logwarn("Result was received")
+
 
 if __name__ == '__main__':
     try:
         rospy.init_node("pick_and_place_node")
+        '''
         client = actionlib.SimpleActionClient("PickAndPlace", kinova_msgs.msg.PoseAndSizeAction)
         rospy.loginfo("init the pick and place client...")
+        '''
+        client = actionlib.SimpleActionClient("StartServer", iair_msgs.msg.armAction)
         init_func()
     except rospy.ROSInterruptException:
-        print("program interrupted before completion", file=sys.stderr)
+        print "program interrupted before completion"

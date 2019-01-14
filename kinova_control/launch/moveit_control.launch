@@ -2,11 +2,14 @@
     <arg name="file_name" default="j2s7s300_demo"/>
     <include file="$(find j2s7s300_moveit_config)/launch/$(arg file_name).launch"/>
 
-    <arg name="control_client" default="pick_place_client.py"/>
+    <arg name="start_server" default="start_server.py"/>
     <arg name="control_server" default="pick_place_server2.py"/>
 
-    <node name="arm_action_client" pkg="kinova_control" type="$(arg control_client)" respawn="false" output="screen">
+    <node name="arm_start_server" pkg="kinova_control" type="$(arg start_server)" respawn="true" output="screen">
     </node>
     <node name="arm_action_server" pkg="kinova_control" type="$(arg control_server)" respawn="true" output="screen">
     </node>
+    <node name="start_client" pkg="kinova_control" type="pick_place_client.py" respawn="false" output="screen">
+    </node>
+    <node name="root_br" pkg="tf" type="static_transform_publisher" args="0 0.5 0 0 0 0 1 root base_link 100" />
 </launch>
