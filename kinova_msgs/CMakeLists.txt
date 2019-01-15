@@ -49,6 +49,7 @@ add_action_files(DIRECTORY action
   Arm_KinovaPose.action
   SetFingersPosition.action
   PoseAndSize.action
+  Hand.action
 )
 
 generate_messages(

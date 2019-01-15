@@ -63,9 +63,9 @@ def pp_client(feedback):
     goal = iair_msgs.msg.armGoal()
     goal.target_object.object_id = 1
     goal.target_object.object_class = 'bottle'
-    goal.target_object.object_point.header.frame_id = 'other'
+    goal.target_object.object_point.header.frame_id = 'base_link'
     goal.target_object.object_point.point = Point(0.0, -1.05, 0.52)
-    goal.target_object.object_size.header.frame_id = 'other'
+    goal.target_object.object_size.header.frame_id = 'base_link'
     goal.target_object.object_size.point = Point(0.02, 0.02, 0.20)
     goal.target_object.class_conf = 0.9
     client.send_goal(goal)

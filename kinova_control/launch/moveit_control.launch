@@ -11,5 +11,5 @@
     </node>
     <node name="start_client" pkg="kinova_control" type="pick_place_client.py" respawn="false" output="screen">
     </node>
-    <node name="root_br" pkg="tf" type="static_transform_publisher" args="0 0.5 0 0 0 0 1 root base_link 100" />
+    <node name="root_br" pkg="tf" type="static_transform_publisher" args="0.50 -0.28 0.405 0 0 1.57 base_link world 100" />
 </launch>
