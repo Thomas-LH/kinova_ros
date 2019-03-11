@@ -9,7 +9,10 @@
     </node>
     <node name="arm_action_server" pkg="kinova_control" type="$(arg control_server)" respawn="true" output="screen">
     </node>
+    <!--node name="hand_server" pkg="kinova_control" type="hand_server.py" respawn="true" output="screen">
+    </node-->
     <node name="start_client" pkg="kinova_control" type="pick_place_client.py" respawn="false" output="screen">
     </node>
-    <node name="root_br" pkg="tf" type="static_transform_publisher" args="0 0.5 0 0 0 0 1 root base_link 100" />
+    <!--node name="root_br" pkg="tf" type="static_transform_publisher" args="0.50 -0.28 0.405 1.57 0 0 base_link world 100" /-->
+    <node name='root_br' pkg="tf" type="static_transform_publisher" args="0 0 0 0 0 0 base_link world 100"/>
 </launch>

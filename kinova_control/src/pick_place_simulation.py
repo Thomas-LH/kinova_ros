@@ -45,7 +45,7 @@ class PickPlaceServer2(object):
     def __init__(self):
         moveit_commander.roscpp_initialize(sys.argv)
         rospy.init_node('PP_server2_node')
-        self._scene = moveit_commander.PlanningSceneInterface('world')
+        self._scene = moveit_commander.PlanningSceneInterface()
         self._scene_pub = rospy.Publisher('planning_scene', PlanningScene, queue_size=2)
         self.state = STATE.START
         self.colors = dict()
@@ -63,6 +63,7 @@ class PickPlaceServer2(object):
         self.arm.allow_replanning(True)
         self.arm.set_planning_time(10)
         end_effector_link = self.arm.get_end_effector_link() # get end effector link name
+        self.status = kinova_msgs.msg.HandStatus()
 
         rospy.sleep(2) #wait for everything be ready
 
@@ -78,7 +79,7 @@ class PickPlaceServer2(object):
         table_back_size = [0.5, 0.25, 0.02] #table on the robot
         tb_side_size = [0.5, 0.02, 0.6]
         pzv_size = [0.7, 0.02, 0.5] #board before user's face
-        pzf_size = [0.5, 0.355, 0.02] #board above user's foot
+        pzf_size = [0.5, 0.38, 0.35] #board above user's foot
         pzs_size = [0.02, 0.5, 1.12] #board on the right side
         bba_size = [0.2, 0.02, tb_side_size[2] + table_back_size[2]]
         ground_size = [3, 3, 0.02]
@@ -87,8 +88,8 @@ class PickPlaceServer2(object):
         self.scene_manage(tb_side_id, tb_side_size, [x_offset + 0.1, 0.0, tb_side_size[2]/2.0])
         self.scene_manage(table_back_id, table_back_size, [x_offset + 0.1, table_back_size[1]/2.0, tb_side_size[2] + table_back_size[2]/2.0])
         self.scene_manage(protectzone_vid, pzv_size, [x_offset, 0.20, tb_side_size[2] + table_back_size[2] + pzv_size[2]/2.0])
-        self.scene_manage(ground_id, ground_size, [0.0, 0.0, -ground_size[2]/2.0 - 0.2])
-        self.scene_manage(protectzone_fid, pzf_size, [x_offset + 0.1, -0.15, 0.205], roll_offset)
+        self.scene_manage(ground_id, ground_size, [0.0, 0.0, -ground_size[2]/2.0])
+        self.scene_manage(protectzone_fid, pzf_size, [x_offset + 0.1, -0.19, 0.175])
         self.scene_manage(board_behind_arm_id, bba_size, [0.03, 0.20, bba_size[2]/2.0])
         self.scene_manage(protectzone_sid, pzs_size, [-0.06, 0.46, pzs_size[2]/2.0])
 
@@ -119,15 +120,6 @@ class PickPlaceServer2(object):
         rospy.logwarn("start_pose:\n%s", test_pose)
         self.start_pose = deepcopy(test_pose)
         self.arm.remember_joint_values('start_pose')
-        self.gripper.set_named_target('Close1')
-        self.gripper.go()
-        rospy.sleep(1)
-        self.gripper.set_named_target('Close2')
-        self.gripper.go()
-        rospy.sleep(1)
-        self.gripper.set_named_target('Open')
-        self.gripper.go()
-        rospy.sleep(1)
 
     def pick_and_place(self, goal):
         # setting object id
@@ -140,7 +132,11 @@ class PickPlaceServer2(object):
         target_size = [goal.object_size.x, goal.object_size.y, goal.object_size.z]
         target_position = [goal.object_pose.point.x, goal.object_pose.point.y, goal.object_pose.point.z + z_offset]
         table_front_size = [1.5, 0.6, goal.object_pose.point.z - target_size[2]/2.0]
-        self.scene_manage(table_front_id, table_front_size, [0.0, -(-goal.object_pose.point.y + table_front_size[1]/2.0 - target_size[1]/2.0 - 0.15), table_front_size[2]/2.0])
+	if target_position[1] > 0.5:
+		table_offset = 0.15
+	elif target_position[1] <= 0.5:
+		table_offset = 0.08
+        self.scene_manage(table_front_id, table_front_size, [0.0, -(-goal.object_pose.point.y + table_front_size[1]/2.0 - target_size[1]/2.0 - table_offset), table_front_size[2]/2.0])
         self.scene_manage(target_id, target_size, target_position)
 
         # setting object color
@@ -202,7 +198,7 @@ class PickPlaceServer2(object):
                     rospy.sleep(0.5)
                     self.place(target_id, place_pose, 0.05, [0.15, [-1.0, 1.0, 0.0]])
                     replan_times += 1
-                    if self.state is STATE.PLACE_FINISH:
+                    if self.state is STATE.PLACE_FINISH or self.state is STATE.PLACE_RETREAT_ERR:
                         replan_state = False
             if self.state is STATE.PLACE_RETREAT_ERR or self.state is STATE.PLACE_FINISH:
                 replan_state = False
@@ -218,22 +214,31 @@ class PickPlaceServer2(object):
             if self.state is STATE.PRE_PLACE_ERR:
                 for final_attempts in range(1,4):
                     final_pose = deepcopy(place_pose)
-                    final_pose.pose.position.x += final_attempts*0.01*(-1)**final_attempts
-                    final_pose.pose.position.y -= final_attempts*0.01*(-1)**final_attempts
+                    final_pose.pose.position.x += final_attempts*0.02*(-1)**final_attempts
+                    final_pose.pose.position.y -= final_attempts*0.02*(-1)**final_attempts
                     self.place(target_id, final_pose, 0.01, [0.15, [-1.0, 1.0, 0.0]])
                     if self.state is STATE.PLACE_FINISH or self.state is STATE.PLACE_RETREAT_ERR:
                         self.back_to_init_pose()
                         break
                 if self.state is STATE.PRE_PLACE_ERR:
                     rospy.logfatal("Can't go back to initial pose automatically! Please use joystick!")
+		    self.gripper.detach_object(target_id)
             self._server.set_aborted()
-        
+
+    def wait_for_hand_action(self, comm):
+        while True:
+            self.status = rospy.wait_for_message('hand_status', kinova_msgs.msg.HandStatus)
+            if comm == 'close' and self.status.hand_status == kinova_msgs.msg.HandStatus.Close:
+                break
+            if comm == 'open' and self.status.hand_status == kinova_msgs.msg.HandStatus.Open:
+                break        
+
     def back_to_init_pose(self, state=0):
         rospy.sleep(0.5)
         print "Return to start posture..."
-        if state:
-            self.gripper.set_named_target("Open")
-            self.gripper.go()
+        #if state:
+            #self.gripper.set_named_target("Open")
+            #self.gripper.go()
         rospy.logwarn(self.arm.get_remembered_joint_values())
         #self.arm.set_named_target('start_pose')
         self.arm.set_pose_target(self.start_pose)
@@ -276,7 +281,7 @@ class PickPlaceServer2(object):
             p.object_colors.append(color)
 
         self._scene_pub.publish(p)
-        rospy.sleep(0.3)
+        rospy.sleep(0.1)
 
     def make_gripper_posture(self, joint_positions):
         t = JointTrajectory()
@@ -324,20 +329,28 @@ class PickPlaceServer2(object):
             replan_times += 1
         if result:
             result = False
-            if self.arm.attach_object(target_name, self.arm.get_end_effector_link(), ["j2s7s300_end_effector", "j2s7s300_link_finger_1", 
+            if self.gripper.attach_object(target_name, self.arm.get_end_effector_link(), ["j2s7s300_end_effector", "j2s7s300_link_finger_1", 
             "j2s7s300_link_finger_tip_1", "j2s7s300_link_finger_2", "j2s7s300_link_finger_tip_2", "j2s7s300_link_finger_3", 
             "j2s7s300_link_finger_tip_3", "j2s7s300_joint_finger_1", "j2s7s300_joint_finger_2", "j2s7s300_joint_finger_3"]):
                 rospy.logwarn("Attach request sent successfully!")
             else:
                 raise Exception("Can't send attach request!")
             print "Grasping..."
-            self.gripper.set_named_target("Close")
+            if self.wait_for_state_update(target_name, box_is_known=False, box_is_attached=True, timeout=4):
+                rospy.logwarn("attach!!!!!!!!!!!!!!!!")
+            rospy.sleep(1)
+            
+
             if self._server.current_goal.get_goal_status().status == GoalStatus.PREEMPTING:
-                self.arm.detach_object(target_name)
+                self.gripper.detach_object(target_name)
                 self.back_to_init_pose()
                 self.state = STATE.STOP
                 return
+
+            #self.wait_for_hand_action('close')
+            self.gripper.set_named_target('Close')
             self.gripper.go()
+
             rospy.sleep(1)
             post_grasp_position = self.get_retreat_point(grasp_position.pose, post_grasp_retreat)
             
@@ -347,7 +360,7 @@ class PickPlaceServer2(object):
             while replan_state and replan_times <= 5:
                 (retreat_path, fraction) = self.get_path(post_grasp_position, 0.005, constraints=constraints)
                 if self._server.current_goal.get_goal_status().status == GoalStatus.PREEMPTING:
-                    self.arm.detach_object(target_name)
+                    self.gripper.detach_object(target_name)
                     self.back_to_init_pose(state=1)
                     self.state = STATE.STOP
                     return
@@ -395,9 +408,14 @@ class PickPlaceServer2(object):
         if result:
             result = False
             print "Placing..."
+            #self.wait_for_hand_action('open')
             self.gripper.set_named_target("Open")
             self.gripper.go()
-            self.arm.detach_object(target_name)
+            rospy.sleep(1)
+
+            self.gripper.detach_object(target_name)
+            if self.wait_for_state_update(target_name, box_is_attached = False, box_is_known=True):
+                rospy.logwarn("detach!!!!!!!!!!!!!")
             rospy.sleep(1)
 
             post_place_position = self.get_retreat_point(place_position.pose, post_place_retreat)
@@ -533,8 +551,28 @@ class PickPlaceServer2(object):
         Q_ = [qx_, qy_, qz_, qw_]
         return Q_
     
-    def safety_check(self):
-        pass
+    def wait_for_state_update(self, box_name, box_is_known=False, box_is_attached=False, timeout=4):
+        start = rospy.get_time()
+        seconds = rospy.get_time()
+        while (seconds - start < timeout) and not rospy.is_shutdown():
+          # Test if the box is in attached objects
+          attached_objects = self._scene.get_attached_objects([box_name])
+          is_attached = len(attached_objects.keys()) > 0
+
+          # Test if the box is in the scene.
+          # Note that attaching the box will remove it from known_objects
+          is_known = box_name in self._scene.get_known_object_names()
+
+          # Test if we are in the expected state
+          if (box_is_attached == is_attached) and (box_is_known == is_known):
+            return True
+
+          # Sleep so that we give other threads time on the processor
+          rospy.sleep(0.1)
+          seconds = rospy.get_time()
+
+        # If we exited the while loop without returning then we timed out
+        return False
 
 if __name__ == "__main__":
     try:

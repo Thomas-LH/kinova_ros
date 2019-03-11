@@ -1,0 +1,8 @@
+# Goal
+uint8 select
+---
+# Result
+bool result
+---
+# Feedback message
+bool hand_close

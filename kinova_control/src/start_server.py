@@ -19,7 +19,8 @@ class StartServer(object):
     def call_arm_server(self, goal):
         arm_goal = kinova_msgs.msg.PoseAndSizeGoal()
         arm_goal.object_class = goal.target_object.object_class
-        arm_goal.object_pose = self.tf_listener.transformPoint("root", goal.target_object.object_point)
+        goal.target_object.object_point.header.stamp = rospy.Time(0)
+        arm_goal.object_pose = self.tf_listener.transformPoint("world", goal.target_object.object_point)
         rospy.logwarn("arm_goal.object_pose:\n%s", arm_goal.object_pose)
         arm_goal.object_size = goal.target_object.object_size.point
         self.pp_client.wait_for_server()
@@ -28,8 +29,10 @@ class StartServer(object):
             state = self.pp_client.get_state()
             if state == GoalStatus.SUCCEEDED:
                 print("Pick and Place Action: Succeeded")
+                self._server.set_succeeded()
             elif state == GoalStatus.ABORTED:
                 rospy.logwarn("Aborted!")
+                self._server.set_aborted()
 
 if __name__ == "__main__":
     try:
